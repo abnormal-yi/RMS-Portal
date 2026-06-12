@@ -123,7 +123,7 @@ try {
             ('t2', 'Jane Smith', 'jane@example.com', '0787654321')");
         // Insert seed contracts linking tenants to properties.
         $pdo->exec("INSERT INTO `contracts` (`id`, `property_id`, `tenant_id`, `start_date`, `end_date`, `status`) VALUES
-            ('c1', 'p1', 't1', '2025-01-01', '2025-06-30', 'active'),
+            ('c1', 'p1', 't1', '2025-01-01', '2026-12-31', 'active'),
             ('c2', 'p3', 't2', '2025-03-01', '2026-02-28', 'active')");
         // Insert seed payments for the active contracts.
         $pdo->exec("INSERT INTO `payments` (`id`, `contract_id`, `amount`, `date`, `method`, `status`) VALUES

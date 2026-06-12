@@ -100,7 +100,7 @@ ON DUPLICATE KEY UPDATE name=VALUES(name);
 
 -- Seed active rental contracts linking tenants to properties.
 INSERT INTO contracts (id, property_id, tenant_id, start_date, end_date, status) VALUES
-('c1', 'p1', 't1', '2025-01-01', '2026-12-31', 'active'),
+('c1', 'p1', 't1', '2025-01-01', '2026-12-31', 'active'),,
 ('c2', 'p3', 't2', '2025-03-01', '2026-02-28', 'active')
 ON DUPLICATE KEY UPDATE status=VALUES(status);
 
