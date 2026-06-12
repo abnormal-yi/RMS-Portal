@@ -1,12 +1,17 @@
 RewriteEngine On
 RewriteBase /
 
-# Protect files
-<FilesMatch "\.(env|json|lock|md)$">
-    Deny from all
+# Protect sensitive files
+<FilesMatch "\.(env|json|lock|md|sql)$">
+    Require all denied
 </FilesMatch>
 
-# Protect directories
-<FilesMatch "^(config|includes|vendor|pdf)">
-    Deny from all
-</FilesMatch>
+# Protect config directory
+RewriteRule ^config/ - [F,L]
+RewriteRule ^includes/ - [F,L]
+RewriteRule ^vendor/ - [F,L]
+
+# Pretty URLs (optional - if you want to remove .php)
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^(.*)$ $1.php [L]

@@ -1,9 +1,11 @@
 <?php
 session_start();
 
-$DB_HOST = getenv('DB_HOST') ?: '127.0.0.1';
-$DB_NAME = getenv('DB_NAME') ?: 'test_rms_portal';
-$DB_USER = getenv('DB_USER') ?: 'yichang';
+// Set these env vars in your hosting panel, or edit defaults below.
+// For Apache: SetEnv DB_HOST "your_host" in .htaccess or httpd.conf
+$DB_HOST = getenv('DB_HOST') ?: 'localhost';
+$DB_NAME = getenv('DB_NAME') ?: 'rms_portal';
+$DB_USER = getenv('DB_USER') ?: 'root';
 $DB_PASS = getenv('DB_PASS') ?: '';
 
 try {
