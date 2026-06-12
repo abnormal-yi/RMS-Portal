@@ -1,0 +1,12 @@
+RewriteEngine On
+RewriteBase /
+
+# Protect files
+<FilesMatch "\.(env|json|lock|md)$">
+    Deny from all
+</FilesMatch>
+
+# Protect directories
+<FilesMatch "^(config|includes|vendor|pdf)">
+    Deny from all
+</FilesMatch>

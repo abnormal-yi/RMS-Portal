@@ -1,0 +1,156 @@
+<?php
+require_once __DIR__ . '/config/database.php';
+require_once __DIR__ . '/includes/auth.php';
+require_once __DIR__ . '/includes/helpers.php';
+requireAuth();
+
+$contract_id = $_GET['contract_id'] ?? '';
+if (!$contract_id) {
+    die('No contract specified');
+}
+
+$stmt = db()->prepare("SELECT * FROM contracts WHERE id = ?");
+$stmt->execute([$contract_id]);
+$contract = $stmt->fetch();
+
+if (!$contract) {
+    die('Contract not found');
+}
+
+$stmt = db()->prepare("SELECT * FROM tenants WHERE id = ?");
+$stmt->execute([$contract['tenant_id']]);
+$tenant = $stmt->fetch();
+
+$stmt = db()->prepare("SELECT * FROM properties WHERE id = ?");
+$stmt->execute([$contract['property_id']]);
+$property = $stmt->fetch();
+
+if (!$tenant || !$property) {
+    die('Associated tenant or property not found');
+}
+
+// Use TCPDF library
+require_once __DIR__ . '/vendor/autoload.php';
+
+$pdf = new TCPDF('P', 'mm', 'A4', true, 'UTF-8', false);
+$pdf->SetCreator('Online Rental Management System');
+$pdf->SetAuthor('Online Rental Management System');
+$pdf->SetTitle('Rental Agreement - ' . $tenant['name']);
+$pdf->SetMargins(20, 20, 20);
+$pdf->SetAutoPageBreak(true, 20);
+$pdf->AddPage();
+
+// Colors
+$primary = [123, 92, 250];
+$dark = [50, 50, 50];
+$gray = [100, 100, 100];
+$light_bg = [245, 245, 245];
+
+// Header bar
+$pdf->SetFillColor($primary[0], $primary[1], $primary[2]);
+$pdf->Rect(0, 0, 210, 40, 'F');
+$pdf->SetTextColor(255, 255, 255);
+$pdf->SetFont('helvetica', 'B', 24);
+$pdf->SetY(12);
+$pdf->Cell(170, 15, 'RENTAL AGREEMENT', 0, 1, 'C');
+
+// Contract meta
+$pdf->SetY(50);
+$pdf->SetFillColor($light_bg[0], $light_bg[1], $light_bg[2]);
+$pdf->Rect(20, 50, 170, 20, 'F');
+$pdf->SetTextColor($dark[0], $dark[1], $dark[2]);
+$pdf->SetFont('helvetica', '', 10);
+$pdf->SetXY(25, 55);
+$pdf->Cell(0, 5, 'Contract Reference ID: ' . $contract['id']);
+$pdf->SetXY(25, 62);
+$pdf->Cell(0, 5, 'Date of Issue: ' . date('F d, Y'));
+
+$y = 82;
+
+// Helper for section headers
+function addSection($pdf, $title, &$y, $primary) {
+    $pdf->SetTextColor($primary[0], $primary[1], $primary[2]);
+    $pdf->SetFont('helvetica', 'B', 14);
+    $pdf->SetXY(20, $y);
+    $pdf->Cell(0, 10, $title);
+    $y += 5;
+    $pdf->SetDrawColor(220, 220, 220);
+    $pdf->Line(20, $y, 190, $y);
+    $y += 8;
+}
+
+function addField($pdf, $label, $value, &$y, $gray, $dark) {
+    $pdf->SetTextColor($gray[0], $gray[1], $gray[2]);
+    $pdf->SetFont('helvetica', '', 11);
+    $pdf->SetXY(20, $y);
+    $pdf->Cell(40, 7, $label);
+    $pdf->SetTextColor($dark[0], $dark[1], $dark[2]);
+    $pdf->SetFont('helvetica', 'B', 11);
+    $pdf->Cell(0, 7, $value);
+    $y += 8;
+}
+
+// 1. THE PARTIES
+addSection($pdf, '1. THE PARTIES', $y, $primary);
+addField($pdf, 'Landlord:', 'RMS Management', $y, $gray, $dark);
+addField($pdf, 'Tenant Name:', $tenant['name'], $y, $gray, $dark);
+addField($pdf, 'Tenant Contact:', $tenant['phone'] ?: $tenant['email'], $y, $gray, $dark);
+$y += 4;
+
+// 2. THE PROPERTY
+addSection($pdf, '2. THE PROPERTY', $y, $primary);
+addField($pdf, 'Property Name:', $property['title'], $y, $gray, $dark);
+addField($pdf, 'Address:', $property['address'], $y, $gray, $dark);
+$y += 4;
+
+// 3. THE TERM AND RENT
+addSection($pdf, '3. THE TERM AND RENT', $y, $primary);
+addField($pdf, 'Start Date:', date('F d, Y', strtotime($contract['start_date'])), $y, $gray, $dark);
+addField($pdf, 'End Date:', date('F d, Y', strtotime($contract['end_date'])), $y, $gray, $dark);
+addField($pdf, 'Monthly Rent:', 'TZS ' . number_format((float)$property['rent_amount'], 0, '.', ','), $y, $gray, $dark);
+$y += 4;
+
+// 4. TERMS & CONDITIONS
+addSection($pdf, '4. TERMS & CONDITIONS', $y, $primary);
+$pdf->SetTextColor($dark[0], $dark[1], $dark[2]);
+$pdf->SetFont('helvetica', '', 10);
+$terms = [
+    '1. Rent is due on the specified date of each month.',
+    '2. The Tenant agrees to keep the premises in good and clean condition.',
+    '3. Any major modifications to the property require written consent from the Landlord.',
+    '4. Notice of termination or move out must be provided at least 30 days in advance.',
+    '5. The tenant is responsible for standard utility bills during their stay.',
+];
+foreach ($terms as $term) {
+    $pdf->SetXY(20, $y);
+    $pdf->Cell(0, 7, $term);
+    $y += 7;
+}
+$y += 8;
+
+// 5. SIGNATURES
+addSection($pdf, '5. SIGNATURES', $y, $primary);
+$y += 10;
+
+$pdf->SetDrawColor(0, 0, 0);
+$pdf->Line(20, $y, 85, $y);
+$pdf->SetTextColor($dark[0], $dark[1], $dark[2]);
+$pdf->SetFont('helvetica', '', 10);
+$pdf->SetXY(20, $y + 3);
+$pdf->Cell(0, 5, 'Landlord Signature & Date');
+
+$pdf->Line(115, $y, 180, $y);
+$pdf->SetXY(115, $y + 3);
+$pdf->Cell(0, 5, 'Tenant Signature & Date');
+
+// Footer bar
+$pdf->SetFillColor($primary[0], $primary[1], $primary[2]);
+$pdf->Rect(0, 287, 210, 10, 'F');
+$pdf->SetTextColor(255, 255, 255);
+$pdf->SetFont('helvetica', '', 8);
+$pdf->SetXY(0, 289);
+$pdf->Cell(210, 5, 'Generated by Online Rental Management System', 0, 1, 'C');
+
+$filename = 'RMS_Contract_' . preg_replace('/\s+/', '_', $tenant['name']) . '_' . preg_replace('/\s+/', '_', $property['title']) . '.pdf';
+$pdf->Output($filename, 'D');
+exit;
