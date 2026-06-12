@@ -1,20 +1,28 @@
 <?php
+/**
+ * tenants.php
+ * Admin CRUD page for managing tenants. Supports listing, adding,
+ * editing, and deleting tenant records with a modal form.
+ */
 require_once __DIR__ . '/config/database.php';
 require_once __DIR__ . '/includes/auth.php';
 require_once __DIR__ . '/includes/helpers.php';
 requireAuth();
 requireRole('admin');
 
+// Parse URL parameters for action, edit target, and delete target
 $action = $_GET['action'] ?? '';
 $edit_id = $_GET['edit'] ?? '';
 $delete_id = $_GET['delete'] ?? '';
 
+// Handle delete: remove tenant and redirect back to list
 if ($delete_id) {
     db()->prepare("DELETE FROM tenants WHERE id = ?")->execute([$delete_id]);
     header('Location: tenants.php');
     exit;
 }
 
+// Handle form submission: create or update a tenant record
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $name = $_POST['name'] ?? '';
     $email = $_POST['email'] ?? '';
@@ -22,9 +30,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $editing_id = $_POST['editing_id'] ?? '';
 
     if ($editing_id) {
+        // Update existing record
         $stmt = db()->prepare("UPDATE tenants SET name=?, email=?, phone=? WHERE id=?");
         $stmt->execute([$name, $email, $phone, $editing_id]);
     } else {
+        // Insert new record with a timestamp-based ID
         $id = 't' . round(microtime(true) * 1000);
         $stmt = db()->prepare("INSERT INTO tenants (id, name, email, phone) VALUES (?,?,?,?)");
         $stmt->execute([$id, $name, $email, $phone]);
@@ -33,7 +43,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     exit;
 }
 
+// Fetch all tenants for table display
 $tenants = db()->query("SELECT * FROM tenants ORDER BY name")->fetchAll();
+// Load tenant data if editing an existing record
 $edit_tenant = null;
 if ($edit_id) {
     $stmt = db()->prepare("SELECT * FROM tenants WHERE id = ?");
@@ -41,6 +53,7 @@ if ($edit_id) {
     $edit_tenant = $stmt->fetch();
 }
 
+// Determine whether to show the add/edit modal and populate form data
 $show_modal = $action === 'add' || $edit_id;
 $form_data = $edit_tenant ?: ['id' => '', 'name' => '', 'email' => '', 'phone' => ''];
 
@@ -57,6 +70,7 @@ ob_start();
         </div>
     </div>
 
+    <!-- Tenants data table with edit/delete action links -->
     <div class="bg-white rounded-xl shadow border border-gray-100 overflow-hidden">
         <div class="overflow-x-auto">
             <table class="min-w-full divide-y divide-gray-200">
@@ -93,6 +107,7 @@ ob_start();
     </div>
 </div>
 
+<!-- Add / Edit tenant modal overlay -->
 <?php if ($show_modal): ?>
 <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
     <div class="bg-white rounded-xl shadow-xl w-full max-w-md max-h-[90vh] flex flex-col">
@@ -129,6 +144,7 @@ ob_start();
 <?php endif; ?>
 
 <?php
+// Capture page content and render inside the shared layout
 $content = ob_get_clean();
 $page_title = 'Tenants';
 require __DIR__ . '/includes/layout.php';

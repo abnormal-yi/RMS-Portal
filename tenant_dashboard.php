@@ -1,21 +1,32 @@
 <?php
+/**
+ * tenant_dashboard.php
+ * Tenant-facing dashboard showing rental details, payment history with control
+ * number generation, and a service request submission modal. Includes quick
+ * actions for generating control numbers, contract renewal, repairs, and move-out.
+ */
+
 require_once __DIR__ . '/config/database.php';
 require_once __DIR__ . '/includes/auth.php';
 require_once __DIR__ . '/includes/helpers.php';
 requireAuth();
 requireRole('tenant');
 
+// Get the current logged-in user and their tenant record
 $user = getCurrentUser();
 $tenant_id = $user['tenant_id'];
 
+// Fetch tenant details
 $tenant = db()->prepare("SELECT * FROM tenants WHERE id = ?");
 $tenant->execute([$tenant_id]);
 $tenant = $tenant->fetch();
 
+// Fetch the active contract for this tenant
 $contract = db()->prepare("SELECT * FROM contracts WHERE tenant_id = ? AND status='active' LIMIT 1");
 $contract->execute([$tenant_id]);
 $contract = $contract->fetch();
 
+// If no tenant record or no active contract, show a placeholder message
 if (!$tenant || !$contract) {
     $content = '<div class="text-center py-12"><h3 class="text-lg font-medium text-gray-900">No Active Rental</h3><p class="mt-1 text-sm text-gray-500">You currently do not have an active rental contract.</p></div>';
     $page_title = 'Tenant Dashboard';
@@ -23,27 +34,32 @@ if (!$tenant || !$contract) {
     exit;
 }
 
+// Fetch the rented property details
 $property = db()->prepare("SELECT * FROM properties WHERE id = ?");
 $property->execute([$contract['property_id']]);
 $property = $property->fetch();
 
+// Fetch payment history for this contract
 $stmt = db()->prepare("SELECT * FROM payments WHERE contract_id = ? ORDER BY date DESC");
 $stmt->execute([$contract['id']]);
 $payments = $stmt->fetchAll();
 
+// Fetch service request history for this tenant
 $stmt = db()->prepare("SELECT * FROM service_requests WHERE tenant_id = ? ORDER BY date DESC");
 $stmt->execute([$tenant_id]);
 $requests = $stmt->fetchAll();
 
+// Compute days until contract expiry and flag if within 45 days
 $days_until_end = floor((strtotime($contract['end_date']) - time()) / 86400);
 $is_expiring_soon = $days_until_end <= 45;
 $pending_payments = array_filter($payments, fn($p) => $p['status'] === 'pending');
 
-// Handle form submissions
+// Handle GET and POST actions: control number generation and service request submission
 $action = $_GET['action'] ?? '';
 $success_msg = '';
 $error_msg = '';
 
+// Generate a new control number for rent payment if no pending payments exist
 if ($action === 'generate_control_number') {
     if (count($pending_payments) > 0) {
         $error_msg = 'You already have a pending rent payment. Please clear it first before generating a new control number.';
@@ -61,6 +77,7 @@ if ($action === 'generate_control_number') {
     }
 }
 
+// Handle service request submission from the modal form
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['submit_type'] ?? '') === 'request') {
     $req_type = $_POST['request_type'] ?? 'maintenance';
     $description = $_POST['description'] ?? '';
@@ -74,6 +91,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['submit_type'] ?? '') === '
     $requests = $stmt->fetchAll();
 }
 
+// Return a human-readable label for each service request type
 function getRequestLabel(string $type): string {
     if ($type === 'maintenance') return 'Repair Request';
     if ($type === 'move_out') return 'Notice to Vacate';
@@ -83,8 +101,10 @@ function getRequestLabel(string $type): string {
 ob_start();
 ?>
 <div class="space-y-6">
+    <!-- Welcome heading -->
     <h1 class="text-2xl font-bold tracking-tight text-gray-900">Karibu, <?= hsc($tenant['name']) ?></h1>
 
+    <!-- Success/error notification banners -->
     <?php if ($success_msg): ?>
     <div class="bg-green-50 border-l-4 border-green-400 p-4 rounded-r-lg shadow-sm">
         <div class="flex"><div class="flex-shrink-0"><svg class="h-5 w-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div>
@@ -98,6 +118,7 @@ ob_start();
     </div>
     <?php endif; ?>
 
+    <!-- Alert banners for expiring contract and pending payments -->
     <div class="space-y-3">
         <?php if ($is_expiring_soon): ?>
         <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-r-lg shadow-sm">
@@ -122,8 +143,9 @@ ob_start();
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        <!-- Left Column -->
+        <!-- Left Column: Rental details + Payment history table -->
         <div class="lg:col-span-8 space-y-6">
+            <!-- Rental details card showing property info, rent amount, and contract period -->
             <div class="bg-white rounded-xl shadow border border-gray-100 overflow-hidden">
                 <div class="px-6 py-5 border-b border-gray-200 flex justify-between items-center bg-gray-50/50">
                     <h3 class="text-lg font-medium leading-6 text-gray-900">Your Rental Details</h3>
@@ -150,6 +172,7 @@ ob_start();
                 </div>
             </div>
 
+            <!-- Payment history table -->
             <div class="bg-white rounded-xl shadow border border-gray-100 overflow-hidden">
                 <div class="px-6 py-5 border-b border-gray-200 flex justify-between items-center">
                     <h3 class="text-lg font-medium leading-6 text-gray-900">Payment History</h3>
@@ -175,8 +198,9 @@ ob_start();
             </div>
         </div>
 
-        <!-- Right Column -->
+        <!-- Right Column: Quick actions and request history -->
         <div class="lg:col-span-4 space-y-6">
+            <!-- Quick actions panel: generate control number, renew contract, report issue, notice to vacate -->
             <div class="bg-white rounded-xl shadow border border-gray-100 p-5">
                 <h3 class="text-base font-semibold text-gray-900 mb-4">Quick Actions</h3>
                 <div class="grid grid-cols-1 gap-3">
@@ -199,6 +223,7 @@ ob_start();
                 </div>
             </div>
 
+            <!-- Recent service requests list, showing up to 5 latest entries -->
             <div class="bg-white rounded-xl shadow border border-gray-100 p-5">
                 <h3 class="text-base font-semibold text-gray-900 mb-4">Your Requests</h3>
                 <?php if (count($requests) > 0): ?>
@@ -220,7 +245,7 @@ ob_start();
     </div>
 </div>
 
-<!-- Request Modal -->
+<!-- Service request submission modal: type-specific titles and descriptions -->
 <div id="requestModal" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-black/50 p-4">
     <div class="bg-white rounded-xl shadow-xl w-full max-w-md">
         <div class="flex justify-between items-center px-6 py-4 border-b border-gray-100">
@@ -238,6 +263,7 @@ ob_start();
 </div>
 
 <script>
+// Show the request modal with type-specific title and description
 function openRequestModal(type) {
     document.getElementById('requestModal').classList.remove('hidden');
     document.getElementById('requestType').value = type;
@@ -250,7 +276,7 @@ function closeRequestModal() {
     document.getElementById('requestModal').classList.add('hidden');
 }
 
-// Auto-open modal from sidebar action
+// Auto-open the request modal when navigated from a quick-action link
 <?php if (in_array($action, ['extension', 'maintenance', 'move_out'])): ?>
 document.addEventListener('DOMContentLoaded', function() {
     openRequestModal('<?= $action ?>');

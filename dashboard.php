@@ -1,4 +1,9 @@
 <?php
+/**
+ * dashboard.php
+ * Admin dashboard displaying summary statistics, available properties,
+ * and recent payments. Included from index.php for admin users.
+ */
 require_once __DIR__ . '/config/database.php';
 require_once __DIR__ . '/includes/auth.php';
 require_once __DIR__ . '/includes/helpers.php';
@@ -7,12 +12,15 @@ requireRole('admin');
 
 $user = getCurrentUser();
 
+// Aggregate stats for summary cards: properties, tenants, contracts, revenue
 $total_properties = db()->query("SELECT COUNT(*) as cnt FROM properties")->fetch()['cnt'];
 $total_tenants = db()->query("SELECT COUNT(*) as cnt FROM tenants")->fetch()['cnt'];
 $active_contracts = db()->query("SELECT COUNT(*) as cnt FROM contracts WHERE status='active'")->fetch()['cnt'];
 $total_revenue = db()->query("SELECT COALESCE(SUM(amount), 0) as total FROM payments WHERE status='completed'")->fetch()['total'];
 
+// Fetch available properties table
 $available = db()->query("SELECT * FROM properties WHERE status='available' ORDER BY title")->fetchAll();
+// Fetch most recent 5 payments with tenant name
 $recent_payments = db()->query("
     SELECT p.*, c.tenant_id, t.name as tenant_name
     FROM payments p
@@ -89,6 +97,7 @@ ob_start();
     </div>
 </div>
 <?php
+// Capture page content and render inside the shared layout
 $content = ob_get_clean();
 $page_title = 'Dashboard';
 require __DIR__ . '/includes/layout.php';

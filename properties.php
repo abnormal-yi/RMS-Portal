@@ -1,22 +1,28 @@
 <?php
+/**
+ * properties.php
+ * Admin CRUD page for managing rental properties. Supports listing,
+ * adding, editing, and deleting properties with a modal form.
+ */
 require_once __DIR__ . '/config/database.php';
 require_once __DIR__ . '/includes/auth.php';
 require_once __DIR__ . '/includes/helpers.php';
 requireAuth();
 requireRole('admin');
 
+// Parse URL parameters for action, edit target, and delete target
 $action = $_GET['action'] ?? '';
 $edit_id = $_GET['edit'] ?? '';
 $delete_id = $_GET['delete'] ?? '';
 
-// Handle delete
+// Handle delete: remove property and redirect back to list
 if ($delete_id) {
     db()->prepare("DELETE FROM properties WHERE id = ?")->execute([$delete_id]);
     header('Location: properties.php');
     exit;
 }
 
-// Handle form submission
+// Handle form submission: create or update a property record
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $title = $_POST['title'] ?? '';
     $address = $_POST['address'] ?? '';
@@ -25,9 +31,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $editing_id = $_POST['editing_id'] ?? '';
 
     if ($editing_id) {
+        // Update existing record
         $stmt = db()->prepare("UPDATE properties SET title=?, address=?, rent_amount=?, status=? WHERE id=?");
         $stmt->execute([$title, $address, $rent_amount, $status, $editing_id]);
     } else {
+        // Insert new record with a timestamp-based ID
         $id = 'p' . round(microtime(true) * 1000);
         $stmt = db()->prepare("INSERT INTO properties (id, title, address, rent_amount, status) VALUES (?,?,?,?,?)");
         $stmt->execute([$id, $title, $address, $rent_amount, $status]);
@@ -36,7 +44,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     exit;
 }
 
+// Fetch all properties for table display
 $properties = db()->query("SELECT * FROM properties ORDER BY title")->fetchAll();
+// Load property data if editing an existing record
 $edit_property = null;
 if ($edit_id) {
     $stmt = db()->prepare("SELECT * FROM properties WHERE id = ?");
@@ -44,6 +54,7 @@ if ($edit_id) {
     $edit_property = $stmt->fetch();
 }
 
+// Determine whether to show the add/edit modal and populate form data
 $show_modal = $action === 'add' || $edit_id;
 $form_data = $edit_property ?: ['id' => '', 'title' => '', 'address' => '', 'rent_amount' => '', 'status' => 'available'];
 
@@ -60,6 +71,7 @@ ob_start();
         </div>
     </div>
 
+    <!-- Properties data table with edit/delete action links -->
     <div class="bg-white rounded-xl shadow border border-gray-100 overflow-hidden">
         <div class="overflow-x-auto">
             <table class="min-w-full divide-y divide-gray-200">
@@ -98,6 +110,7 @@ ob_start();
     </div>
 </div>
 
+<!-- Add / Edit property modal overlay -->
 <?php if ($show_modal): ?>
 <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
     <div class="bg-white rounded-xl shadow-xl w-full max-w-md max-h-[90vh] flex flex-col">
@@ -142,6 +155,7 @@ ob_start();
 <?php endif; ?>
 
 <?php
+// Capture page content and render inside the shared layout
 $content = ob_get_clean();
 $page_title = 'Properties';
 require __DIR__ . '/includes/layout.php';

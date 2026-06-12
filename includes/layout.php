@@ -1,10 +1,18 @@
 <?php
+/*----------------------------------------------------------------------
+  layout.php  —  Master layout template for the RMS Portal
+  Renders the HTML shell, sidebar navigation (admin vs tenant), and the
+  main content area. Every page includes this file for a consistent UI.
+----------------------------------------------------------------------*/
+
 require_once __DIR__ . '/auth.php';
 require_once __DIR__ . '/helpers.php';
 
+// Get the currently logged-in user and derive the current page name.
 $user = getCurrentUser();
 $current_page = basename($_SERVER['PHP_SELF'], '.php') ?: 'index';
 
+// Admin sidebar navigation links with corresponding icon names.
 $admin_links = [
     ['name' => 'Dashboard', 'path' => 'index.php', 'icon' => 'dashboard'],
     ['name' => 'Properties', 'path' => 'properties.php', 'icon' => 'building'],
@@ -15,6 +23,7 @@ $admin_links = [
     ['name' => 'Reports', 'path' => 'reports.php', 'icon' => 'bar-chart'],
 ];
 
+// Tenant sidebar navigation links — actions are dashboard-based.
 $tenant_links = [
     ['name' => 'My Dashboard', 'path' => 'index.php', 'icon' => 'dashboard'],
     ['name' => 'Pay Rent (Control No.)', 'path' => 'index.php?action=generate_control_number', 'icon' => 'credit-card'],
@@ -23,8 +32,13 @@ $tenant_links = [
     ['name' => 'Notice to Vacate', 'path' => 'index.php?action=move_out', 'icon' => 'file-output'],
 ];
 
+// Pick the correct nav set based on the user's role.
 $links = $user['role'] === 'admin' ? $admin_links : $tenant_links;
 
+/**
+ * iconSVG()  —  Return an inline SVG string for a named icon.
+ * Icons are used inside sidebar links and the logout button.
+ */
 function iconSVG(string $name): string {
     $icons = [
         'dashboard' => '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>',
@@ -53,13 +67,15 @@ function iconSVG(string $name): string {
 </head>
 <body>
 
+<!-- Main layout wrapper: sidebar + content area -->
 <div class="min-h-screen bg-gray-50 flex" x-data="{ sidebarOpen: false }">
-    <!-- Mobile overlay -->
+    <!-- Mobile sidebar backdrop overlay -->
     <div x-show="sidebarOpen" @click="sidebarOpen = false" class="fixed inset-0 z-20 bg-black/50 lg:hidden" style="display: none;"></div>
 
-    <!-- Sidebar -->
+    <!-- Sidebar — contains the app title, navigation links, and user info -->
     <aside class="fixed lg:static inset-y-0 left-0 z-30 w-64 bg-white border-r border-gray-200 transform transition-transform duration-200 ease-in-out -translate-x-full lg:translate-x-0 flex flex-col"
            x-bind:class="sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'">
+        <!-- Sidebar header with app name and close button (mobile) -->
         <div class="h-16 flex items-center justify-between px-6 border-b border-gray-200">
             <h1 class="text-xl font-bold text-gray-900 tracking-tight">Online Rental Management</h1>
             <button @click="sidebarOpen = false" class="lg:hidden p-1 -mr-2 text-gray-500 hover:bg-gray-100 rounded-lg">
@@ -67,6 +83,7 @@ function iconSVG(string $name): string {
             </button>
         </div>
 
+        <!-- Navigation links — highlights the current active page -->
         <nav class="flex-1 px-4 py-4 space-y-1 overflow-y-auto">
             <?php foreach ($links as $link):
                 $is_active = $current_page === basename($link['path'], '.php');
@@ -79,6 +96,7 @@ function iconSVG(string $name): string {
             <?php endforeach; ?>
         </nav>
 
+        <!-- Sidebar footer: logged-in user info and logout button -->
         <div class="p-4 border-t border-gray-200">
             <div class="flex items-center px-3 py-2 text-sm text-gray-700">
                 <span class="truncate flex-1"><?= hsc($user['username']) ?> <span class="text-gray-400 capitalize">(<?= $user['role'] ?>)</span></span>
@@ -91,8 +109,9 @@ function iconSVG(string $name): string {
         </div>
     </aside>
 
-    <!-- Main content -->
+    <!-- Main content area — contains the page-specific body -->
     <main class="flex-1 flex flex-col min-w-0">
+        <!-- Mobile top header bar with hamburger menu toggle -->
         <header class="h-16 bg-white border-b border-gray-200 flex items-center px-4 sm:px-6 lg:hidden">
             <button @click="sidebarOpen = true" class="p-2 mr-3 text-gray-500 hover:bg-gray-100 rounded-lg">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
@@ -100,6 +119,7 @@ function iconSVG(string $name): string {
             <h2 class="text-lg font-semibold text-gray-900">Online Rental Management</h2>
         </header>
 
+        <!-- Page content rendered by the including script -->
         <div class="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
             <div class="max-w-7xl mx-auto">
                 <?= $content ?? '' ?>

@@ -1,15 +1,22 @@
 <?php
+/**
+ * reports.php
+ * Financial reports dashboard with metric cards (revenue, occupancy, pending rent),
+ * a Chart.js bar chart for monthly revenue, and print/PDF export via html2canvas + jsPDF.
+ */
+
 require_once __DIR__ . '/config/database.php';
 require_once __DIR__ . '/includes/auth.php';
 require_once __DIR__ . '/includes/helpers.php';
 requireAuth();
 requireRole('admin');
 
+// Fetch raw data for aggregation
 $properties = db()->query("SELECT * FROM properties")->fetchAll();
 $contracts = db()->query("SELECT * FROM contracts")->fetchAll();
 $payments = db()->query("SELECT * FROM payments ORDER BY date")->fetchAll();
 
-// Revenue by month
+// Aggregate completed payments by month for the revenue chart
 $revenue_by_month = [];
 foreach ($payments as $p) {
     if ($p['status'] !== 'completed') continue;
@@ -18,19 +25,23 @@ foreach ($payments as $p) {
     $revenue_by_month[$month] += (float)$p['amount'];
 }
 
+// Encode chart data for JavaScript
 $chart_labels = json_encode(array_keys($revenue_by_month));
 $chart_values = json_encode(array_values($revenue_by_month));
 
+// Calculate total expected monthly rent from rented properties
 $total_expected_rent = 0;
 foreach ($properties as $p) {
     if ($p['status'] === 'rented') $total_expected_rent += (float)$p['rent_amount'];
 }
 
+// Sum all completed payments received
 $total_received = 0;
 foreach ($payments as $p) {
     if ($p['status'] === 'completed') $total_received += (float)$p['amount'];
 }
 
+// Count active and terminated contracts
 $active_tenants = 0;
 $terminated = 0;
 foreach ($contracts as $c) {
@@ -38,6 +49,7 @@ foreach ($contracts as $c) {
     if ($c['status'] === 'terminated') $terminated++;
 }
 
+// Calculate total amount and count of pending payments
 $pending_payments_amount = 0;
 $pending_payments_count = 0;
 foreach ($payments as $p) {
@@ -47,10 +59,12 @@ foreach ($payments as $p) {
     }
 }
 
+// Compute occupancy rate from rented vs total properties
 $rented = 0;
 foreach ($properties as $p) { if ($p['status'] === 'rented') $rented++; }
 $occupancy_rate = count($properties) > 0 ? round(($rented / count($properties)) * 100) : 0;
 
+// Chart.js for the revenue chart, html2canvas + jsPDF for PDF export
 $extra_head = <<<HTML
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
@@ -60,6 +74,7 @@ HTML;
 ob_start();
 ?>
 <div class="space-y-6">
+    <!-- Header with Print and Export PDF buttons -->
     <div class="sm:flex sm:items-center justify-between">
         <h1 class="text-2xl font-bold tracking-tight text-gray-900">Financial Reports & Summary</h1>
         <div class="mt-4 sm:ml-16 sm:mt-0 flex space-x-3">
@@ -74,7 +89,9 @@ ob_start();
         </div>
     </div>
 
+    <!-- Report content area: metric cards and revenue chart, target for print/PDF capture -->
     <div id="reportContent" class="space-y-6 bg-gray-50 p-2 sm:p-4 rounded-xl -m-2 sm:-m-4">
+        <!-- Metric cards showing total revenue, expected rent, occupancy, active tenants, moved out, pending rent -->
         <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
             <div class="bg-white px-4 py-5 shadow rounded-xl border border-gray-100 sm:p-6 flex items-start space-x-4">
                 <div class="p-3 rounded-lg bg-green-100"><svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></div>
@@ -106,6 +123,7 @@ ob_start();
             </div>
         </div>
 
+        <!-- Revenue chart card with Chart.js bar chart -->
         <div class="bg-white rounded-xl shadow border border-gray-100 p-6">
             <h3 class="text-lg font-medium leading-6 text-gray-900 mb-6">Revenue Over Time (Received)</h3>
             <div class="h-80 w-full">
@@ -115,6 +133,7 @@ ob_start();
     </div>
 </div>
 
+<!-- Chart.js initialization and PDF export function using html2canvas + jsPDF -->
 <script>
 const labels = <?= $chart_labels ?>;
 const values = <?= $chart_values ?>;
@@ -156,6 +175,7 @@ new Chart(document.getElementById('revenueChart'), {
     }
 });
 
+// Capture report content as an image and generate a downloadable PDF
 async function exportPDF() {
     const { jsPDF } = window.jspdf;
     const el = document.getElementById('reportContent');

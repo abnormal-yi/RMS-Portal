@@ -1,11 +1,18 @@
 <?php
+/**
+ * requests.php
+ * Admin panel for managing tenant service requests. Supports approving
+ * (or marking as resolved), rejecting, and listing all requests with
+ * type-specific icons and labels.
+ */
+
 require_once __DIR__ . '/config/database.php';
 require_once __DIR__ . '/includes/auth.php';
 require_once __DIR__ . '/includes/helpers.php';
 requireAuth();
 requireRole('admin');
 
-// Handle status update
+// Handle status update: approve, resolve, or reject a request
 $update_id = $_GET['update'] ?? '';
 $new_status = $_GET['status'] ?? '';
 if ($update_id && $new_status) {
@@ -15,6 +22,7 @@ if ($update_id && $new_status) {
     exit;
 }
 
+// Fetch all requests, tenants, and related contracts for display
 $requests = db()->query("SELECT * FROM service_requests ORDER BY date DESC")->fetchAll();
 $tenants = db()->query("SELECT * FROM tenants")->fetchAll();
 $contracts_map = [];
@@ -24,6 +32,7 @@ foreach ($cstmt as $c) $contracts_map[$c['id']] = $c;
 $tenant_map = [];
 foreach ($tenants as $t) $tenant_map[$t['id']] = $t;
 
+// Return an SVG icon corresponding to the request type (maintenance, move_out, or other)
 function getRequestIcon(string $type): string {
     if ($type === 'maintenance') {
         return '<svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.573-1.066z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>';
@@ -33,6 +42,7 @@ function getRequestIcon(string $type): string {
     }
     return '<svg class="w-5 h-5 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>';
 }
+// Return a human-readable label for each request type
 function getRequestLabel(string $type): string {
     if ($type === 'maintenance') return 'Repair/Maintenance';
     if ($type === 'move_out') return 'Notice to Vacate';
@@ -47,6 +57,7 @@ ob_start();
         <p class="mt-2 text-sm text-gray-700">Manage complaints, maintenance requests, and move-out notices from tenants.</p>
     </div>
 
+    <!-- Requests table with date, type (with icon), tenant/property, message, status, and approve/reject actions -->
     <div class="bg-white rounded-xl shadow border border-gray-100 overflow-hidden">
         <div class="overflow-x-auto">
             <table class="min-w-full divide-y divide-gray-200">
@@ -80,6 +91,7 @@ ob_start();
                         <td class="px-6 py-4 text-sm text-gray-600 max-w-xs break-words"><?= hsc($req['description']) ?></td>
                         <td class="whitespace-nowrap px-6 py-4 text-sm"><?= statusBadge($req['status']) ?></td>
                         <td class="whitespace-nowrap px-6 py-4 text-right text-sm font-medium">
+                            <!-- For pending requests, show approve/resolve and reject action buttons -->
                             <?php if ($req['status'] === 'pending'): ?>
                             <div class="flex justify-end space-x-2">
                                 <?php $resolve_status = $req['type'] === 'maintenance' ? 'resolved' : 'approved'; ?>

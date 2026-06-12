@@ -1,21 +1,30 @@
 <?php
+/**
+ * login.php
+ * Handles user authentication. Checks for an existing session, processes
+ * the login form, and displays the sign-in page with error feedback.
+ */
 require_once __DIR__ . '/config/database.php';
 require_once __DIR__ . '/includes/helpers.php';
 require_once __DIR__ . '/includes/auth.php';
 
+// Redirect authenticated users away from the login page
 if (isLoggedIn()) {
     header('Location: index.php');
     exit;
 }
 
+// Initialize error message and process POST login attempt
 $error = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $username = $_POST['username'] ?? '';
     $password = $_POST['password'] ?? '';
+    // Attempt login; redirect on success
     if (login($username, $password)) {
         header('Location: index.php');
         exit;
     }
+    // Set error message on failed login
     $error = 'Invalid username or password';
 }
 ?><!DOCTYPE html>
@@ -56,6 +65,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <h1 class="text-white text-3xl font-medium mb-2">Welcome back</h1>
             <p class="text-gray-400 text-sm mb-10">Sign in to the Online Rental Management System to manage your account.</p>
 
+            <!-- Login form with error display and credential fields -->
             <form method="post" class="space-y-5">
                 <?php if ($error): ?>
                 <div class="bg-red-500/10 border border-red-500/50 text-red-400 p-3 rounded-lg text-sm text-center">

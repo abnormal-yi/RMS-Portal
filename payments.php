@@ -1,26 +1,37 @@
 <?php
+/**
+ * payments.php
+ * Admin payment management: record new payments, mark pending payments as
+ * completed, and delete payment records. Supports control number references
+ * for bank/mobile-money verification.
+ */
+
 require_once __DIR__ . '/config/database.php';
 require_once __DIR__ . '/includes/auth.php';
 require_once __DIR__ . '/includes/helpers.php';
 requireAuth();
 requireRole('admin');
 
+// Determine requested action: add, delete, or mark-as-paid
 $action = $_GET['action'] ?? '';
 $delete_id = $_GET['delete'] ?? '';
 $mark_paid = $_GET['mark_paid'] ?? '';
 
+// Delete a payment record
 if ($delete_id) {
     db()->prepare("DELETE FROM payments WHERE id = ?")->execute([$delete_id]);
     header('Location: payments.php');
     exit;
 }
 
+// Mark a pending payment as completed (funds confirmed received)
 if ($mark_paid) {
     db()->prepare("UPDATE payments SET status='completed' WHERE id=?")->execute([$mark_paid]);
     header('Location: payments.php');
     exit;
 }
 
+// Handle POST: insert a new payment record with generated ID and optional control number
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $contract_id = $_POST['contract_id'] ?? '';
     $amount = (float)($_POST['amount'] ?? 0);
@@ -36,6 +47,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     exit;
 }
 
+// Fetch payments and active contracts (for the form dropdown)
 $payments = db()->query("SELECT * FROM payments ORDER BY date DESC")->fetchAll();
 $contracts = db()->query("SELECT c.*, t.name as tenant_name, p.title as property_title FROM contracts c JOIN tenants t ON t.id = c.tenant_id JOIN properties p ON p.id = c.property_id WHERE c.status='active'")->fetchAll();
 
@@ -44,6 +56,7 @@ $show_modal = $action === 'add';
 ob_start();
 ?>
 <div class="space-y-6">
+    <!-- Page header with "Record Payment" button -->
     <div class="sm:flex sm:items-center justify-between">
         <h1 class="text-2xl font-bold tracking-tight text-gray-900">Payments</h1>
         <div class="mt-4 sm:ml-16 sm:mt-0 sm:flex-none">
@@ -54,6 +67,7 @@ ob_start();
         </div>
     </div>
 
+    <!-- Payments table listing date, tenant, property, amount, method, status, and actions -->
     <div class="bg-white rounded-xl shadow border border-gray-100 overflow-hidden">
         <div class="overflow-x-auto">
             <table class="min-w-full divide-y divide-gray-200">
@@ -108,6 +122,7 @@ ob_start();
     </div>
 </div>
 
+<!-- Payment recording modal: form fields for contract, amount, date, method, status, and control number -->
 <?php if ($show_modal): ?>
 <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
     <div class="bg-white rounded-xl shadow-xl w-full max-w-md max-h-[90vh] flex flex-col">

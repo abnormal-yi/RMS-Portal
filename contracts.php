@@ -1,14 +1,23 @@
 <?php
+/**
+ * contracts.php
+ * Admin CRUD for rental contracts. Creates, edits, and deletes contracts
+ * that link tenants to properties. On active contract creation, marks the
+ * property as 'rented'; on deletion, reverts it to 'available'.
+ */
+
 require_once __DIR__ . '/config/database.php';
 require_once __DIR__ . '/includes/auth.php';
 require_once __DIR__ . '/includes/helpers.php';
 requireAuth();
 requireRole('admin');
 
+// Determine requested action: add, edit, or delete
 $action = $_GET['action'] ?? '';
 $edit_id = $_GET['edit'] ?? '';
 $delete_id = $_GET['delete'] ?? '';
 
+// Handle contract deletion: revert property status, then delete record
 if ($delete_id) {
     $stmt = db()->prepare("SELECT property_id FROM contracts WHERE id = ?");
     $stmt->execute([$delete_id]);
@@ -21,6 +30,7 @@ if ($delete_id) {
     exit;
 }
 
+// Handle POST: create new contract or update existing one
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $property_id = $_POST['property_id'] ?? '';
     $tenant_id = $_POST['tenant_id'] ?? '';
@@ -44,10 +54,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     exit;
 }
 
+// Fetch all contracts, properties, and tenants for the table and form dropdowns
 $contracts = db()->query("SELECT * FROM contracts ORDER BY created_at DESC")->fetchAll();
 $properties = db()->query("SELECT * FROM properties ORDER BY title")->fetchAll();
 $tenants = db()->query("SELECT * FROM tenants ORDER BY name")->fetchAll();
 
+// If editing, fetch the contract to pre-populate the form
 $edit_contract = null;
 if ($edit_id) {
     $stmt = db()->prepare("SELECT * FROM contracts WHERE id = ?");
@@ -55,10 +67,11 @@ if ($edit_id) {
     $edit_contract = $stmt->fetch();
 }
 
+// Determine modal visibility and build default form data
 $show_modal = $action === 'add' || $edit_id;
 $form_data = $edit_contract ?: ['id' => '', 'property_id' => '', 'tenant_id' => '', 'start_date' => '', 'end_date' => '', 'status' => 'active'];
 
-// Build lookups
+// Build lookup maps for property titles and tenant names used in the table
 $prop_map = [];
 foreach ($properties as $p) $prop_map[$p['id']] = $p;
 $tenant_map = [];
@@ -77,6 +90,7 @@ ob_start();
         </div>
     </div>
 
+    <!-- Contracts table listing all contracts with property, tenant, period, status, and action links -->
     <div class="bg-white rounded-xl shadow border border-gray-100 overflow-hidden">
         <div class="overflow-x-auto">
             <table class="min-w-full divide-y divide-gray-200">
@@ -123,6 +137,7 @@ ob_start();
     </div>
 </div>
 
+<!-- Add/Edit contract modal dialog with form fields for property, tenant, dates, and status -->
 <?php if ($show_modal): ?>
 <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
     <div class="bg-white rounded-xl shadow-xl w-full max-w-md max-h-[90vh] flex flex-col">
