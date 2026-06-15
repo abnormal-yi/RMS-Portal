@@ -50,6 +50,18 @@ function requireRole(string $role): void {
 }
 
 /**
+ * requireAnyRole()  —  Allow multiple roles to access a page.
+ * Redirects to index.php if the user's role is not in the list.
+ */
+function requireAnyRole(array $roles): void {
+    $user = getCurrentUser();
+    if (!$user || !in_array($user['role'], $roles)) {
+        header('Location: index.php');
+        exit;
+    }
+}
+
+/**
  * login()  —  Attempt to authenticate a user by username and password.
  * On success, populates session variables and returns true.
  * On failure, returns false.
