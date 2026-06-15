@@ -8,6 +8,7 @@ $current_action = $_GET['action'] ?? '';
 
 $admin_links = [
     ['name' => 'Dashboard', 'path' => 'index.php', 'icon' => 'dashboard'],
+    ['name' => 'Users', 'path' => 'users.php', 'icon' => 'users'],
     ['name' => 'Properties', 'path' => 'properties.php', 'icon' => 'building'],
     ['name' => 'Tenants', 'path' => 'tenants.php', 'icon' => 'users'],
     ['name' => 'Contracts', 'path' => 'contracts.php', 'icon' => 'file-text'],
@@ -18,6 +19,7 @@ $admin_links = [
 
 $landlord_links = [
     ['name' => 'Dashboard', 'path' => 'index.php', 'icon' => 'dashboard'],
+    ['name' => 'Users', 'path' => 'users.php', 'icon' => 'users'],
     ['name' => 'My Properties', 'path' => 'properties.php', 'icon' => 'building'],
     ['name' => 'Tenants', 'path' => 'tenants.php', 'icon' => 'users'],
     ['name' => 'Contracts', 'path' => 'contracts.php', 'icon' => 'file-text'],
