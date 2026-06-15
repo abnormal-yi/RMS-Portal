@@ -48,7 +48,7 @@ try {
             `id` VARCHAR(20) PRIMARY KEY,
             `username` VARCHAR(50) UNIQUE NOT NULL,
             `password` VARCHAR(255) NOT NULL,
-            `role` ENUM('admin','tenant') NOT NULL DEFAULT 'tenant',
+            `role` ENUM('admin','tenant','landlord') NOT NULL DEFAULT 'tenant',
             `tenant_id` VARCHAR(20) DEFAULT NULL,
             `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
@@ -111,7 +111,8 @@ try {
         // Insert seed admin and tenant users.
         $pdo->exec("INSERT INTO `users` (`id`, `username`, `password`, `role`, `tenant_id`) VALUES
             ('u1', 'admin', '" . password_hash('password', PASSWORD_DEFAULT) . "', 'admin', NULL),
-            ('u2', 'johndoe', '" . password_hash('password', PASSWORD_DEFAULT) . "', 'tenant', 't1')");
+            ('u2', 'johndoe', '" . password_hash('password', PASSWORD_DEFAULT) . "', 'tenant', 't1'),
+            ('u3', 'landlord', '" . password_hash('password', PASSWORD_DEFAULT) . "', 'landlord', NULL)");
         // Insert seed properties with varying rent amounts.
         $pdo->exec("INSERT INTO `properties` (`id`, `title`, `address`, `rent_amount`, `status`) VALUES
             ('p1', 'Sunset Apartment A1', '123 Arusha Way', 500000, 'rented'),

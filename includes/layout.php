@@ -1,18 +1,11 @@
 <?php
-/*----------------------------------------------------------------------
-  layout.php  —  Master layout template for the RMS Portal
-  Renders the HTML shell, sidebar navigation (admin vs tenant), and the
-  main content area. Every page includes this file for a consistent UI.
-----------------------------------------------------------------------*/
-
 require_once __DIR__ . '/auth.php';
 require_once __DIR__ . '/helpers.php';
 
-// Get the currently logged-in user and derive the current page name.
 $user = getCurrentUser();
 $current_page = basename($_SERVER['PHP_SELF'], '.php') ?: 'index';
+$current_action = $_GET['action'] ?? '';
 
-// Admin sidebar navigation links with corresponding icon names.
 $admin_links = [
     ['name' => 'Dashboard', 'path' => 'index.php', 'icon' => 'dashboard'],
     ['name' => 'Properties', 'path' => 'properties.php', 'icon' => 'building'],
@@ -23,22 +16,32 @@ $admin_links = [
     ['name' => 'Reports', 'path' => 'reports.php', 'icon' => 'bar-chart'],
 ];
 
-// Tenant sidebar navigation links — actions are dashboard-based.
-$tenant_links = [
-    ['name' => 'My Dashboard', 'path' => 'index.php', 'icon' => 'dashboard'],
-    ['name' => 'Pay Rent (Control No.)', 'path' => 'index.php?action=generate_control_number', 'icon' => 'credit-card'],
-    ['name' => 'Renew Contract', 'path' => 'index.php?action=extension', 'icon' => 'file-text'],
-    ['name' => 'Report Issue (Repair)', 'path' => 'index.php?action=maintenance', 'icon' => 'wrench'],
-    ['name' => 'Notice to Vacate', 'path' => 'index.php?action=move_out', 'icon' => 'file-output'],
+$landlord_links = [
+    ['name' => 'Dashboard', 'path' => 'index.php', 'icon' => 'dashboard'],
+    ['name' => 'My Properties', 'path' => 'properties.php', 'icon' => 'building'],
+    ['name' => 'Tenants', 'path' => 'tenants.php', 'icon' => 'users'],
+    ['name' => 'Contracts', 'path' => 'contracts.php', 'icon' => 'file-text'],
+    ['name' => 'Payments', 'path' => 'payments.php', 'icon' => 'credit-card'],
+    ['name' => 'Requests', 'path' => 'requests.php', 'icon' => 'message-square'],
+    ['name' => 'Reports', 'path' => 'reports.php', 'icon' => 'bar-chart'],
 ];
 
-// Pick the correct nav set based on the user's role.
-$links = $user['role'] === 'admin' ? $admin_links : $tenant_links;
+$tenant_links = [
+    ['name' => 'My Dashboard', 'path' => 'index.php', 'icon' => 'dashboard', 'action' => ''],
+    ['name' => 'Pay Rent (Control No.)', 'path' => 'index.php?action=generate_control_number', 'icon' => 'credit-card', 'action' => 'generate_control_number'],
+    ['name' => 'Renew Contract', 'path' => 'index.php?action=extension', 'icon' => 'file-text', 'action' => 'extension'],
+    ['name' => 'Report Issue (Repair)', 'path' => 'index.php?action=maintenance', 'icon' => 'wrench', 'action' => 'maintenance'],
+    ['name' => 'Notice to Vacate', 'path' => 'index.php?action=move_out', 'icon' => 'file-output', 'action' => 'move_out'],
+];
 
-/**
- * iconSVG()  —  Return an inline SVG string for a named icon.
- * Icons are used inside sidebar links and the logout button.
- */
+if ($user['role'] === 'admin') {
+    $links = $admin_links;
+} elseif ($user['role'] === 'landlord') {
+    $links = $landlord_links;
+} else {
+    $links = $tenant_links;
+}
+
 function iconSVG(string $name): string {
     $icons = [
         'dashboard' => '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>',
@@ -65,61 +68,60 @@ function iconSVG(string $name): string {
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏠</text></svg>">
     <?php if (isset($extra_head)) echo $extra_head; ?>
 </head>
-<body>
+<body class="bg-gray-100">
 
-<!-- Main layout wrapper: sidebar + content area -->
-<div class="min-h-screen bg-gray-50 flex" x-data="{ sidebarOpen: false }">
-    <!-- Mobile sidebar backdrop overlay -->
+<div class="min-h-screen flex" x-data="{ sidebarOpen: false }">
     <div x-show="sidebarOpen" @click="sidebarOpen = false" class="fixed inset-0 z-20 bg-black/50 lg:hidden" style="display: none;"></div>
 
-    <!-- Sidebar — contains the app title, navigation links, and user info -->
-    <aside class="fixed lg:static inset-y-0 left-0 z-30 w-64 bg-white border-r border-gray-200 transform transition-transform duration-200 ease-in-out -translate-x-full lg:translate-x-0 flex flex-col"
+    <aside class="fixed lg:static inset-y-0 left-0 z-30 w-64 bg-slate-900 transform transition-transform duration-200 ease-in-out -translate-x-full lg:translate-x-0 flex flex-col"
            x-bind:class="sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'">
-        <!-- Sidebar header with app name and close button (mobile) -->
-        <div class="h-16 flex items-center justify-between px-6 border-b border-gray-200">
-            <h1 class="text-xl font-bold text-gray-900 tracking-tight">Online Rental Management</h1>
-            <button @click="sidebarOpen = false" class="lg:hidden p-1 -mr-2 text-gray-500 hover:bg-gray-100 rounded-lg">
+        <div class="h-16 flex items-center justify-between px-6 border-b border-slate-700">
+            <h1 class="text-xl font-bold text-white tracking-tight">RMS Portal</h1>
+            <button @click="sidebarOpen = false" class="lg:hidden p-1 -mr-2 text-slate-400 hover:bg-slate-800 rounded-lg">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
             </button>
         </div>
 
-        <!-- Navigation links — highlights the current active page -->
         <nav class="flex-1 px-4 py-4 space-y-1 overflow-y-auto">
             <?php foreach ($links as $link):
-                $is_active = $current_page === basename($link['path'], '.php');
+                $is_active = false;
+                if (isset($link['action'])) {
+                    $is_active = $current_page === 'index' && $current_action === $link['action'];
+                    if ($link['action'] === '') {
+                        $is_active = $current_page === 'index' && $current_action === '';
+                    }
+                } else {
+                    $is_active = $current_page === basename($link['path'], '.php');
+                }
             ?>
             <a href="<?= $link['path'] ?>"
-               class="flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-colors <?= $is_active ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900' ?>">
-                <span class="mr-3 <?= $is_active ? 'text-blue-600' : 'text-gray-400' ?>"><?= iconSVG($link['icon']) ?></span>
+               class="flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-colors <?= $is_active ? 'bg-blue-600 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white' ?>">
+                <span class="mr-3 <?= $is_active ? 'text-white' : 'text-slate-500' ?>"><?= iconSVG($link['icon']) ?></span>
                 <?= $link['name'] ?>
             </a>
             <?php endforeach; ?>
         </nav>
 
-        <!-- Sidebar footer: logged-in user info and logout button -->
-        <div class="p-4 border-t border-gray-200">
-            <div class="flex items-center px-3 py-2 text-sm text-gray-700">
-                <span class="truncate flex-1"><?= hsc($user['username']) ?> <span class="text-gray-400 capitalize">(<?= $user['role'] ?>)</span></span>
+        <div class="p-4 border-t border-slate-700">
+            <div class="flex items-center px-3 py-2 text-sm text-slate-300">
+                <span class="truncate flex-1"><?= hsc($user['username']) ?> <span class="text-slate-500 capitalize">(<?= $user['role'] ?>)</span></span>
             </div>
             <a href="logout.php"
-               class="mt-2 w-full flex items-center px-3 py-2 text-sm font-medium text-red-600 rounded-lg hover:bg-red-50 transition-colors">
+               class="mt-2 w-full flex items-center px-3 py-2 text-sm font-medium text-red-400 rounded-lg hover:bg-slate-800 transition-colors">
                 <span class="mr-3"><?= iconSVG('log-out') ?></span>
                 Logout
             </a>
         </div>
     </aside>
 
-    <!-- Main content area — contains the page-specific body -->
     <main class="flex-1 flex flex-col min-w-0">
-        <!-- Mobile top header bar with hamburger menu toggle -->
-        <header class="h-16 bg-white border-b border-gray-200 flex items-center px-4 sm:px-6 lg:hidden">
+        <header class="h-16 bg-white border-b border-gray-200 flex items-center px-4 sm:px-6 lg:hidden shadow-sm">
             <button @click="sidebarOpen = true" class="p-2 mr-3 text-gray-500 hover:bg-gray-100 rounded-lg">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
             </button>
-            <h2 class="text-lg font-semibold text-gray-900">Online Rental Management</h2>
+            <h2 class="text-lg font-semibold text-gray-900">RMS Portal</h2>
         </header>
 
-        <!-- Page content rendered by the including script -->
         <div class="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
             <div class="max-w-7xl mx-auto">
                 <?= $content ?? '' ?>

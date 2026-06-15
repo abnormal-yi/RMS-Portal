@@ -15,6 +15,8 @@ $user = getCurrentUser();
 // Route to appropriate dashboard based on user role
 if ($user['role'] === 'admin') {
     require __DIR__ . '/dashboard.php';
+} elseif ($user['role'] === 'landlord') {
+    require __DIR__ . '/landlord_dashboard.php';
 } else {
     require __DIR__ . '/tenant_dashboard.php';
 }
