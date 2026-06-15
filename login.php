@@ -96,6 +96,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <span class="text-gray-400 text-xs uppercase tracking-wider font-semibold">Tenant</span>
                     <span class="font-mono text-gray-200 text-sm">johndoe / password</span>
                 </div>
+                <div class="flex justify-between items-center bg-[#353443] p-3.5 rounded-xl border border-[#424155]">
+                    <span class="text-gray-400 text-xs uppercase tracking-wider font-semibold">Landlord</span>
+                    <span class="font-mono text-gray-200 text-sm">landlord / password</span>
+                </div>
             </div>
         </div>
     </div>
