@@ -107,7 +107,9 @@ try {
     // Check if any users already exist. If the database is empty, insert
     // seed data so the application has sample records to display.
     $stmt = $pdo->query("SELECT COUNT(*) as cnt FROM users");
-    if ($stmt->fetch()['cnt'] == 0) {
+    $hasUsers = $stmt->fetch()['cnt'] > 0;
+
+    if (!$hasUsers) {
         // Insert seed admin and tenant users.
         $pdo->exec("INSERT INTO `users` (`id`, `username`, `password`, `role`, `tenant_id`) VALUES
             ('u1', 'admin', '" . password_hash('password', PASSWORD_DEFAULT) . "', 'admin', NULL),
@@ -134,6 +136,16 @@ try {
         echo "<div class='bg-green-50 border border-green-200 text-green-700 p-3 rounded-lg text-sm'>✓ Seed data inserted.</div>";
     } else {
         echo "<div class='bg-blue-50 border border-blue-200 text-blue-700 p-3 rounded-lg text-sm'>ℹ Seed data skipped (database already populated).</div>";
+    }
+
+    // Always ensure the 'landlord' role is in the ENUM and user exists
+    try {
+        $pdo->exec("ALTER TABLE `users` MODIFY COLUMN `role` ENUM('admin','tenant','landlord') NOT NULL DEFAULT 'tenant'");
+        $pdo->exec("INSERT IGNORE INTO `users` (`id`, `username`, `password`, `role`, `tenant_id`) VALUES
+            ('u3', 'landlord', '" . password_hash('password', PASSWORD_DEFAULT) . "', 'landlord', NULL)");
+        echo "<div class='bg-green-50 border border-green-200 text-green-700 p-3 rounded-lg text-sm'>✓ Landlord user ensured.</div>";
+    } catch (PDOException $e) {
+        echo "<div class='bg-yellow-50 border border-yellow-200 text-yellow-700 p-3 rounded-lg text-sm'>⚠ Could not ensure landlord user: " . hsc($e->getMessage()) . "</div>";
     }
 
     echo "<div class='bg-green-100 border border-green-300 text-green-800 p-4 rounded-lg text-sm font-semibold mt-4'>✓ Database initialized successfully!</div>";

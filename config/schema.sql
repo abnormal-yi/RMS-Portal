@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS users (
     id VARCHAR(20) PRIMARY KEY,
     username VARCHAR(50) UNIQUE NOT NULL,
     password VARCHAR(255) NOT NULL,
-    role ENUM('admin','tenant') NOT NULL DEFAULT 'tenant',
+    role ENUM('admin','tenant','landlord') NOT NULL DEFAULT 'tenant',
     tenant_id VARCHAR(20) DEFAULT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
@@ -82,7 +82,8 @@ CREATE TABLE IF NOT EXISTS service_requests (
 -- Password for both seed users is: password
 INSERT INTO users (id, username, password, role, tenant_id) VALUES
 ('u1', 'admin', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'admin', NULL),
-('u2', 'johndoe', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'tenant', 't1')
+('u2', 'johndoe', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'tenant', 't1'),
+('u3', 'landlord', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'landlord', NULL)
 ON DUPLICATE KEY UPDATE username=VALUES(username);
 
 -- Seed a few properties with different rent amounts and statuses.
@@ -100,7 +101,7 @@ ON DUPLICATE KEY UPDATE name=VALUES(name);
 
 -- Seed active rental contracts linking tenants to properties.
 INSERT INTO contracts (id, property_id, tenant_id, start_date, end_date, status) VALUES
-('c1', 'p1', 't1', '2025-01-01', '2026-12-31', 'active'),,
+('c1', 'p1', 't1', '2025-01-01', '2026-12-31', 'active'),
 ('c2', 'p3', 't2', '2025-03-01', '2026-02-28', 'active')
 ON DUPLICATE KEY UPDATE status=VALUES(status);
 
