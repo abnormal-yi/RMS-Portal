@@ -32,5 +32,6 @@ PHP + MySQL rental property management system for landlords and tenants.
 
 | Role   | Username | Password   |
 |--------|----------|------------|
-| Admin  | admin    | password   |
-| Tenant | johndoe  | password   |
+| Admin    | admin    | password   |
+| Tenant   | johndoe  | password   |
+| Landlord | landlord | password   |
