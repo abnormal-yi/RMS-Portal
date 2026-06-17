@@ -11,7 +11,13 @@ CREATE TABLE IF NOT EXISTS users (
     id VARCHAR(20) PRIMARY KEY,
     username VARCHAR(50) UNIQUE NOT NULL,
     password VARCHAR(255) NOT NULL,
+    full_name VARCHAR(255) DEFAULT NULL,
+    phone VARCHAR(50) DEFAULT NULL,
+    email VARCHAR(255) DEFAULT NULL,
+    nida VARCHAR(50) DEFAULT NULL,
     role ENUM('admin','tenant','landlord') NOT NULL DEFAULT 'tenant',
+    approved TINYINT(1) NOT NULL DEFAULT 1,
+    property_address TEXT DEFAULT NULL,
     tenant_id VARCHAR(20) DEFAULT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
@@ -80,10 +86,10 @@ CREATE TABLE IF NOT EXISTS service_requests (
 -- Seed data: pre-populate the database with sample records so the
 -- application has data to display immediately after setup.
 -- Password for both seed users is: password
-INSERT INTO users (id, username, password, role, tenant_id) VALUES
-('u1', 'admin', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'admin', NULL),
-('u2', 'johndoe', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'tenant', 't1'),
-('u3', 'landlord', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'landlord', NULL)
+INSERT INTO users (id, username, password, full_name, phone, email, nida, role, approved, property_address, tenant_id) VALUES
+('u1', 'admin', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'System Admin', NULL, NULL, NULL, 'admin', 1, NULL, NULL),
+('u2', 'johndoe', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'John Doe', '0712345678', 'john@example.com', NULL, 'tenant', 1, NULL, 't1'),
+('u3', 'landlord', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Property Owner', '0765432100', 'landlord@example.com', '19800101123456', 'landlord', 1, '123 Landlord Ave, Dar es Salaam', NULL)
 ON DUPLICATE KEY UPDATE username=VALUES(username);
 
 -- Seed a few properties with different rent amounts and statuses.

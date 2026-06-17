@@ -9,12 +9,6 @@ $current_action = $_GET['action'] ?? '';
 $admin_links = [
     ['name' => 'Dashboard', 'path' => 'index.php', 'icon' => 'dashboard'],
     ['name' => 'Users', 'path' => 'users.php', 'icon' => 'users'],
-    ['name' => 'Properties', 'path' => 'properties.php', 'icon' => 'building'],
-    ['name' => 'Tenants', 'path' => 'tenants.php', 'icon' => 'users'],
-    ['name' => 'Contracts', 'path' => 'contracts.php', 'icon' => 'file-text'],
-    ['name' => 'Payments', 'path' => 'payments.php', 'icon' => 'credit-card'],
-    ['name' => 'Requests', 'path' => 'requests.php', 'icon' => 'message-square'],
-    ['name' => 'Reports', 'path' => 'reports.php', 'icon' => 'bar-chart'],
 ];
 
 $landlord_links = [
@@ -106,7 +100,7 @@ function iconSVG(string $name): string {
 
         <div class="p-4 border-t border-slate-700">
             <div class="flex items-center px-3 py-2 text-sm text-slate-300">
-                <span class="truncate flex-1"><?= hsc($user['username']) ?> <span class="text-slate-500 capitalize">(<?= $user['role'] ?>)</span></span>
+                <span class="truncate flex-1"><?= hsc($user['full_name'] ?: $user['username']) ?> <span class="text-slate-500 capitalize">(<?= $user['role'] ?>)</span></span>
             </div>
             <a href="logout.php"
                class="mt-2 w-full flex items-center px-3 py-2 text-sm font-medium text-red-400 rounded-lg hover:bg-slate-800 transition-colors">

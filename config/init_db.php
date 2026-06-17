@@ -48,7 +48,13 @@ try {
             `id` VARCHAR(20) PRIMARY KEY,
             `username` VARCHAR(50) UNIQUE NOT NULL,
             `password` VARCHAR(255) NOT NULL,
+            `full_name` VARCHAR(255) DEFAULT NULL,
+            `phone` VARCHAR(50) DEFAULT NULL,
+            `email` VARCHAR(255) DEFAULT NULL,
+            `nida` VARCHAR(50) DEFAULT NULL,
             `role` ENUM('admin','tenant','landlord') NOT NULL DEFAULT 'tenant',
+            `approved` TINYINT(1) NOT NULL DEFAULT 1,
+            `property_address` TEXT DEFAULT NULL,
             `tenant_id` VARCHAR(20) DEFAULT NULL,
             `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
@@ -111,10 +117,10 @@ try {
 
     if (!$hasUsers) {
         // Insert seed admin and tenant users.
-        $pdo->exec("INSERT INTO `users` (`id`, `username`, `password`, `role`, `tenant_id`) VALUES
-            ('u1', 'admin', '" . password_hash('password', PASSWORD_DEFAULT) . "', 'admin', NULL),
-            ('u2', 'johndoe', '" . password_hash('password', PASSWORD_DEFAULT) . "', 'tenant', 't1'),
-            ('u3', 'landlord', '" . password_hash('password', PASSWORD_DEFAULT) . "', 'landlord', NULL)");
+        $pdo->exec("INSERT INTO `users` (`id`, `username`, `password`, `full_name`, `phone`, `email`, `nida`, `role`, `approved`, `property_address`, `tenant_id`) VALUES
+            ('u1', 'admin', '" . password_hash('password', PASSWORD_DEFAULT) . "', 'System Admin', NULL, NULL, NULL, 'admin', 1, NULL, NULL),
+            ('u2', 'johndoe', '" . password_hash('password', PASSWORD_DEFAULT) . "', 'John Doe', '0712345678', 'john@example.com', NULL, 'tenant', 1, NULL, 't1'),
+            ('u3', 'landlord', '" . password_hash('password', PASSWORD_DEFAULT) . "', 'Property Owner', '0765432100', 'landlord@example.com', '19800101123456', 'landlord', 1, '123 Landlord Ave, Dar es Salaam', NULL)");
         // Insert seed properties with varying rent amounts.
         $pdo->exec("INSERT INTO `properties` (`id`, `title`, `address`, `rent_amount`, `status`) VALUES
             ('p1', 'Sunset Apartment A1', '123 Arusha Way', 500000, 'rented'),
@@ -138,12 +144,18 @@ try {
         echo "<div class='bg-blue-50 border border-blue-200 text-blue-700 p-3 rounded-lg text-sm'>ℹ Seed data skipped (database already populated).</div>";
     }
 
-    // Always ensure the 'landlord' role is in the ENUM and user exists
+    // Always ensure the 'landlord' role is in the ENUM, new columns exist, and user exists
     try {
         $pdo->exec("ALTER TABLE `users` MODIFY COLUMN `role` ENUM('admin','tenant','landlord') NOT NULL DEFAULT 'tenant'");
-        $pdo->exec("INSERT IGNORE INTO `users` (`id`, `username`, `password`, `role`, `tenant_id`) VALUES
-            ('u3', 'landlord', '" . password_hash('password', PASSWORD_DEFAULT) . "', 'landlord', NULL)");
-        echo "<div class='bg-green-50 border border-green-200 text-green-700 p-3 rounded-lg text-sm'>✓ Landlord user ensured.</div>";
+        $pdo->exec("ALTER TABLE `users` ADD COLUMN IF NOT EXISTS `full_name` VARCHAR(255) DEFAULT NULL AFTER `password`");
+        $pdo->exec("ALTER TABLE `users` ADD COLUMN IF NOT EXISTS `phone` VARCHAR(50) DEFAULT NULL AFTER `full_name`");
+        $pdo->exec("ALTER TABLE `users` ADD COLUMN IF NOT EXISTS `email` VARCHAR(255) DEFAULT NULL AFTER `phone`");
+        $pdo->exec("ALTER TABLE `users` ADD COLUMN IF NOT EXISTS `nida` VARCHAR(50) DEFAULT NULL AFTER `email`");
+        $pdo->exec("ALTER TABLE `users` ADD COLUMN IF NOT EXISTS `approved` TINYINT(1) NOT NULL DEFAULT 1 AFTER `role`");
+        $pdo->exec("ALTER TABLE `users` ADD COLUMN IF NOT EXISTS `property_address` TEXT DEFAULT NULL AFTER `approved`");
+        $pdo->exec("INSERT IGNORE INTO `users` (`id`, `username`, `password`, `full_name`, `role`, `approved`) VALUES
+            ('u3', 'landlord', '" . password_hash('password', PASSWORD_DEFAULT) . "', 'Property Owner', 'landlord', 1)");
+        echo "<div class='bg-green-50 border border-green-200 text-green-700 p-3 rounded-lg text-sm'>✓ Schema updated / landlord user ensured.</div>";
     } catch (PDOException $e) {
         echo "<div class='bg-yellow-50 border border-yellow-200 text-yellow-700 p-3 rounded-lg text-sm'>⚠ Could not ensure landlord user: " . hsc($e->getMessage()) . "</div>";
     }

@@ -17,24 +17,55 @@ function isLoggedIn(): bool {
 
 /**
  * getCurrentUser()  —  Fetch the authenticated user's record from the DB.
- * Returns an associative array (id, username, role, tenant_id) or null.
+ * Returns an associative array (id, username, role, tenant_id, approved, etc.) or null.
  */
 function getCurrentUser(): ?array {
     if (!isLoggedIn()) return null;
-    $stmt = db()->prepare("SELECT id, username, role, tenant_id FROM users WHERE id = ?");
+    $stmt = db()->prepare("SELECT id, username, full_name, phone, email, nida, role, approved, property_address, tenant_id FROM users WHERE id = ?");
     $stmt->execute([$_SESSION['user_id']]);
     return $stmt->fetch() ?: null;
 }
 
 /**
+ * requireApproved()  —  If the user is a landlord and not approved,
+ * redirect to a "pending approval" page.
+ */
+function requireApproved(): void {
+    $user = getCurrentUser();
+    if ($user && $user['role'] === 'landlord' && !$user['approved']) {
+        header('Location: pending.php');
+        exit;
+    }
+}
+
+/**
+ * approveLandlord()  —  Set landlord approved=1 and create a property
+ * from their registered property_address.
+ */
+function approveLandlord(string $userId): bool {
+    $stmt = db()->prepare("SELECT * FROM users WHERE id = ? AND role = 'landlord' AND approved = 0");
+    $stmt->execute([$userId]);
+    $user = $stmt->fetch();
+    if (!$user || empty($user['property_address'])) return false;
+
+    $propId = 'p' . round(microtime(true) * 1000);
+    db()->prepare("INSERT INTO properties (id, title, address, rent_amount, status) VALUES (?, ?, ?, 0, 'available')")
+        ->execute([$propId, $user['full_name'] ?: $user['username'] . "'s Property", $user['property_address']]);
+    db()->prepare("UPDATE users SET approved = 1 WHERE id = ?")->execute([$userId]);
+    return true;
+}
+
+/**
  * requireAuth()  —  Redirect to the login page if the user is not
  * authenticated. Call this at the top of any protected page.
+ * Also checks landlord approval status.
  */
 function requireAuth(): void {
     if (!isLoggedIn()) {
         header('Location: login.php');
         exit;
     }
+    requireApproved();
 }
 
 /**
@@ -72,6 +103,10 @@ function login(string $username, string $password): bool {
     $user = $stmt->fetch();
 
     if ($user && password_verify($password, $user['password'])) {
+        // Block unapproved landlords from logging in
+        if ($user['role'] === 'landlord' && !$user['approved']) {
+            return false;
+        }
         $_SESSION['user_id'] = $user['id'];
         $_SESSION['username'] = $user['username'];
         $_SESSION['role'] = $user['role'];

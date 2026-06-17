@@ -10,7 +10,7 @@ require_once __DIR__ . '/config/database.php';
 require_once __DIR__ . '/includes/auth.php';
 require_once __DIR__ . '/includes/helpers.php';
 requireAuth();
-requireRole('admin');
+requireRole('landlord');
 
 // Determine requested action: add, delete, or mark-as-paid
 $action = $_GET['action'] ?? '';

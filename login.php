@@ -24,8 +24,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         header('Location: index.php');
         exit;
     }
-    // Set error message on failed login
-    $error = 'Invalid username or password';
+    // Check if it's an unapproved landlord
+    $stmt = db()->prepare("SELECT role, approved FROM users WHERE username = ?");
+    $stmt->execute([$username]);
+    $u = $stmt->fetch();
+    if ($u && $u['role'] === 'landlord' && !$u['approved']) {
+        $error = 'Your account is pending admin approval. Please check back later.';
+    } else {
+        $error = 'Invalid username or password';
+    }
 }
 ?><!DOCTYPE html>
 <html lang="en">
@@ -100,6 +107,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <span class="text-gray-400 text-xs uppercase tracking-wider font-semibold">Landlord</span>
                     <span class="font-mono text-gray-200 text-sm">landlord / password</span>
                 </div>
+            </div>
+            <div class="mt-6 text-center">
+                <a href="register.php" class="text-[#7B5CFA] hover:text-[#6849E3] text-sm font-medium transition-colors">
+                    Don't own property? Register as Landlord →
+                </a>
             </div>
         </div>
     </div>

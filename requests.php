@@ -10,7 +10,7 @@ require_once __DIR__ . '/config/database.php';
 require_once __DIR__ . '/includes/auth.php';
 require_once __DIR__ . '/includes/helpers.php';
 requireAuth();
-requireRole('admin');
+requireRole('landlord');
 
 // Handle status update: approve, resolve, or reject a request
 $update_id = $_GET['update'] ?? '';
