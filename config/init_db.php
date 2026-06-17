@@ -56,6 +56,7 @@ try {
             `approved` TINYINT(1) NOT NULL DEFAULT 1,
             `property_address` TEXT DEFAULT NULL,
             `tenant_id` VARCHAR(20) DEFAULT NULL,
+            `must_change_password` TINYINT(1) NOT NULL DEFAULT 1,
             `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
         'properties' => "CREATE TABLE IF NOT EXISTS `properties` (
@@ -69,8 +70,9 @@ try {
         'tenants' => "CREATE TABLE IF NOT EXISTS `tenants` (
             `id` VARCHAR(20) PRIMARY KEY,
             `name` VARCHAR(255) NOT NULL,
-            `email` VARCHAR(255) NOT NULL,
+            `email` VARCHAR(255) DEFAULT NULL,
             `phone` VARCHAR(50) NOT NULL,
+            `nida` VARCHAR(50) DEFAULT NULL,
             `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
         'contracts' => "CREATE TABLE IF NOT EXISTS `contracts` (
@@ -153,6 +155,9 @@ try {
         $pdo->exec("ALTER TABLE `users` ADD COLUMN IF NOT EXISTS `nida` VARCHAR(50) DEFAULT NULL AFTER `email`");
         $pdo->exec("ALTER TABLE `users` ADD COLUMN IF NOT EXISTS `approved` TINYINT(1) NOT NULL DEFAULT 1 AFTER `role`");
         $pdo->exec("ALTER TABLE `users` ADD COLUMN IF NOT EXISTS `property_address` TEXT DEFAULT NULL AFTER `approved`");
+        $pdo->exec("ALTER TABLE `users` ADD COLUMN IF NOT EXISTS `must_change_password` TINYINT(1) NOT NULL DEFAULT 1 AFTER `tenant_id`");
+        $pdo->exec("ALTER TABLE `tenants` ADD COLUMN IF NOT EXISTS `nida` VARCHAR(50) DEFAULT NULL AFTER `phone`");
+        $pdo->exec("ALTER TABLE `tenants` MODIFY COLUMN `email` VARCHAR(255) DEFAULT NULL");
         $pdo->exec("INSERT IGNORE INTO `users` (`id`, `username`, `password`, `full_name`, `role`, `approved`) VALUES
             ('u3', 'landlord', '" . password_hash('password', PASSWORD_DEFAULT) . "', 'Property Owner', 'landlord', 1)");
         echo "<div class='bg-green-50 border border-green-200 text-green-700 p-3 rounded-lg text-sm'>✓ Schema updated / landlord user ensured.</div>";

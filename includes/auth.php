@@ -21,7 +21,7 @@ function isLoggedIn(): bool {
  */
 function getCurrentUser(): ?array {
     if (!isLoggedIn()) return null;
-    $stmt = db()->prepare("SELECT id, username, full_name, phone, email, nida, role, approved, property_address, tenant_id FROM users WHERE id = ?");
+    $stmt = db()->prepare("SELECT id, username, full_name, phone, email, nida, role, approved, property_address, tenant_id, must_change_password FROM users WHERE id = ?");
     $stmt->execute([$_SESSION['user_id']]);
     return $stmt->fetch() ?: null;
 }
@@ -93,6 +93,16 @@ function requireAnyRole(array $roles): void {
 }
 
 /**
+ * generateCredentials()  —  Create a unique username and a random password.
+ * Returns ['username' => '...', 'password' => '...'].
+ */
+function generateCredentials(): array {
+    $username = 'TN' . strtoupper(substr(uniqid(), -6));
+    $password = bin2hex(random_bytes(4));
+    return ['username' => $username, 'password' => $password];
+}
+
+/**
  * login()  —  Attempt to authenticate a user by username and password.
  * On success, populates session variables and returns true.
  * On failure, returns false.
@@ -114,6 +124,21 @@ function login(string $username, string $password): bool {
         return true;
     }
     return false;
+}
+
+/**
+ * needsPasswordChange()  —  Check if the current user must change password.
+ */
+function needsPasswordChange(): bool {
+    $user = getCurrentUser();
+    return $user && !empty($user['must_change_password']);
+}
+
+/**
+ * clearPasswordChangeFlag()  —  Mark password as changed so the flag is cleared.
+ */
+function clearPasswordChangeFlag(string $userId): void {
+    db()->prepare("UPDATE users SET must_change_password = 0 WHERE id = ?")->execute([$userId]);
 }
 
 /**

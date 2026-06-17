@@ -21,7 +21,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $password = $_POST['password'] ?? '';
     // Attempt login; redirect on success
     if (login($username, $password)) {
-        header('Location: index.php');
+        if (needsPasswordChange()) {
+            header('Location: change-password.php');
+        } else {
+            header('Location: index.php');
+        }
         exit;
     }
     // Check if it's an unapproved landlord
