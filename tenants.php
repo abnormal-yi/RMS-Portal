@@ -10,6 +10,9 @@ require_once __DIR__ . '/includes/helpers.php';
 requireAuth();
 requireRole('landlord');
 
+$user = getCurrentUser();
+$lid = $user['id'];
+
 $action = $_GET['action'] ?? '';
 $edit_id = $_GET['edit'] ?? '';
 $delete_id = $_GET['delete'] ?? '';
@@ -17,7 +20,7 @@ $new_creds = $_SESSION['new_tenant_creds'] ?? null;
 unset($_SESSION['new_tenant_creds']);
 
 if ($delete_id) {
-    db()->prepare("DELETE FROM tenants WHERE id = ?")->execute([$delete_id]);
+    db()->prepare("DELETE FROM tenants WHERE id = ? AND landlord_id = ?")->execute([$delete_id, $lid]);
     header('Location: tenants.php');
     exit;
 }
@@ -29,13 +32,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $editing_id = $_POST['editing_id'] ?? '';
 
     if ($editing_id) {
-        db()->prepare("UPDATE tenants SET name=?, nida=?, phone=? WHERE id=?")
-            ->execute([$name, $nida, $phone, $editing_id]);
+        db()->prepare("UPDATE tenants SET name=?, nida=?, phone=? WHERE id=? AND landlord_id=?")
+            ->execute([$name, $nida, $phone, $editing_id, $lid]);
     } else {
         $email = strtolower(str_replace(' ', '.', $name)) . '@rental.local';
         $tid = 't' . round(microtime(true) * 1000);
-        db()->prepare("INSERT INTO tenants (id, name, nida, phone, email) VALUES (?,?,?,?,?)")
-            ->execute([$tid, $name, $nida, $phone, $email]);
+        db()->prepare("INSERT INTO tenants (id, name, nida, phone, email, landlord_id) VALUES (?,?,?,?,?,?)")
+            ->execute([$tid, $name, $nida, $phone, $email, $lid]);
 
         $creds = generateCredentials();
         $uid = 'u' . round(microtime(true) * 1000);
@@ -49,7 +52,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     exit;
 }
 
-$tenants = db()->query("SELECT * FROM tenants ORDER BY name")->fetchAll();
+$tstmt = db()->prepare("SELECT * FROM tenants WHERE landlord_id = ? ORDER BY name");
+$tstmt->execute([$lid]);
+$tenants = $tstmt->fetchAll();
 $edit_tenant = null;
 if ($edit_id) {
     $stmt = db()->prepare("SELECT * FROM tenants WHERE id = ?");

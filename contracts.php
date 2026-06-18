@@ -12,6 +12,9 @@ require_once __DIR__ . '/includes/helpers.php';
 requireAuth();
 requireRole('landlord');
 
+$user = getCurrentUser();
+$lid = $user['id'];
+
 // Determine requested action: add, edit, or delete
 $action = $_GET['action'] ?? '';
 $edit_id = $_GET['edit'] ?? '';
@@ -19,13 +22,13 @@ $delete_id = $_GET['delete'] ?? '';
 
 // Handle contract deletion: revert property status, then delete record
 if ($delete_id) {
-    $stmt = db()->prepare("SELECT property_id FROM contracts WHERE id = ?");
-    $stmt->execute([$delete_id]);
+    $stmt = db()->prepare("SELECT c.property_id FROM contracts c JOIN properties p ON p.id = c.property_id WHERE c.id = ? AND p.landlord_id = ?");
+    $stmt->execute([$delete_id, $lid]);
     $contract = $stmt->fetch();
     if ($contract) {
-        db()->prepare("UPDATE properties SET status='available' WHERE id=?")->execute([$contract['property_id']]);
+        db()->prepare("UPDATE properties SET status='available' WHERE id=? AND landlord_id=?")->execute([$contract['property_id'], $lid]);
     }
-    db()->prepare("DELETE FROM contracts WHERE id = ?")->execute([$delete_id]);
+    db()->prepare("DELETE c FROM contracts c JOIN properties p ON p.id = c.property_id WHERE c.id = ? AND p.landlord_id = ?")->execute([$delete_id, $lid]);
     header('Location: contracts.php');
     exit;
 }
@@ -40,30 +43,45 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $editing_id = $_POST['editing_id'] ?? '';
 
     if ($editing_id) {
-        $stmt = db()->prepare("UPDATE contracts SET property_id=?, tenant_id=?, start_date=?, end_date=?, status=? WHERE id=?");
-        $stmt->execute([$property_id, $tenant_id, $start_date, $end_date, $status, $editing_id]);
+        $stmt = db()->prepare("UPDATE contracts c JOIN properties p ON p.id = c.property_id SET c.property_id=?, c.tenant_id=?, c.start_date=?, c.end_date=?, c.status=? WHERE c.id=? AND p.landlord_id=?");
+        $stmt->execute([$property_id, $tenant_id, $start_date, $end_date, $status, $editing_id, $lid]);
     } else {
+        // Verify the property belongs to this landlord before creating contract
+        $check = db()->prepare("SELECT id FROM properties WHERE id = ? AND landlord_id = ?");
+        $check->execute([$property_id, $lid]);
+        if (!$check->fetch()) {
+            header('Location: contracts.php');
+            exit;
+        }
         $id = 'c' . round(microtime(true) * 1000);
         $stmt = db()->prepare("INSERT INTO contracts (id, property_id, tenant_id, start_date, end_date, status) VALUES (?,?,?,?,?,?)");
         $stmt->execute([$id, $property_id, $tenant_id, $start_date, $end_date, $status]);
         if ($status === 'active') {
-            db()->prepare("UPDATE properties SET status='rented' WHERE id=?")->execute([$property_id]);
+            db()->prepare("UPDATE properties SET status='rented' WHERE id=? AND landlord_id=?")->execute([$property_id, $lid]);
         }
     }
     header('Location: contracts.php');
     exit;
 }
 
-// Fetch all contracts, properties, and tenants for the table and form dropdowns
-$contracts = db()->query("SELECT * FROM contracts ORDER BY created_at DESC")->fetchAll();
-$properties = db()->query("SELECT * FROM properties ORDER BY title")->fetchAll();
-$tenants = db()->query("SELECT * FROM tenants ORDER BY name")->fetchAll();
+// Fetch only this landlord's contracts, properties, and tenants
+$cstmt = db()->prepare("SELECT c.* FROM contracts c JOIN properties p ON p.id = c.property_id WHERE p.landlord_id = ? ORDER BY c.created_at DESC");
+$cstmt->execute([$lid]);
+$contracts = $cstmt->fetchAll();
 
-// If editing, fetch the contract to pre-populate the form
+$pstmt = db()->prepare("SELECT * FROM properties WHERE landlord_id = ? ORDER BY title");
+$pstmt->execute([$lid]);
+$properties = $pstmt->fetchAll();
+
+$tstmt = db()->prepare("SELECT * FROM tenants WHERE landlord_id = ? ORDER BY name");
+$tstmt->execute([$lid]);
+$tenants = $tstmt->fetchAll();
+
+// If editing, fetch the contract to pre-populate the form (must belong to this landlord)
 $edit_contract = null;
 if ($edit_id) {
-    $stmt = db()->prepare("SELECT * FROM contracts WHERE id = ?");
-    $stmt->execute([$edit_id]);
+    $stmt = db()->prepare("SELECT c.* FROM contracts c JOIN properties p ON p.id = c.property_id WHERE c.id = ? AND p.landlord_id = ?");
+    $stmt->execute([$edit_id, $lid]);
     $edit_contract = $stmt->fetch();
 }
 

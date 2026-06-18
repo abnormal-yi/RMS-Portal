@@ -16,8 +16,11 @@ $edit_id = $_GET['edit'] ?? '';
 $delete_id = $_GET['delete'] ?? '';
 
 // Handle delete: remove property and redirect back to list
+$user = getCurrentUser();
+$lid = $user['id'];
+
 if ($delete_id) {
-    db()->prepare("DELETE FROM properties WHERE id = ?")->execute([$delete_id]);
+    db()->prepare("DELETE FROM properties WHERE id = ? AND landlord_id = ?")->execute([$delete_id, $lid]);
     header('Location: properties.php');
     exit;
 }
@@ -31,26 +34,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $editing_id = $_POST['editing_id'] ?? '';
 
     if ($editing_id) {
-        // Update existing record
-        $stmt = db()->prepare("UPDATE properties SET title=?, address=?, rent_amount=?, status=? WHERE id=?");
-        $stmt->execute([$title, $address, $rent_amount, $status, $editing_id]);
+        $stmt = db()->prepare("UPDATE properties SET title=?, address=?, rent_amount=?, status=? WHERE id=? AND landlord_id=?");
+        $stmt->execute([$title, $address, $rent_amount, $status, $editing_id, $lid]);
     } else {
-        // Insert new record with a timestamp-based ID
         $id = 'p' . round(microtime(true) * 1000);
-        $stmt = db()->prepare("INSERT INTO properties (id, title, address, rent_amount, status) VALUES (?,?,?,?,?)");
-        $stmt->execute([$id, $title, $address, $rent_amount, $status]);
+        $stmt = db()->prepare("INSERT INTO properties (id, title, address, landlord_id, rent_amount, status) VALUES (?,?,?,?,?,?)");
+        $stmt->execute([$id, $title, $address, $lid, $rent_amount, $status]);
     }
     header('Location: properties.php');
     exit;
 }
 
-// Fetch all properties for table display
-$properties = db()->query("SELECT * FROM properties ORDER BY title")->fetchAll();
+// Fetch only this landlord's properties
+$pstmt = db()->prepare("SELECT * FROM properties WHERE landlord_id = ? ORDER BY title");
+$pstmt->execute([$lid]);
+$properties = $pstmt->fetchAll();
 // Load property data if editing an existing record
 $edit_property = null;
 if ($edit_id) {
-    $stmt = db()->prepare("SELECT * FROM properties WHERE id = ?");
-    $stmt->execute([$edit_id]);
+    $stmt = db()->prepare("SELECT * FROM properties WHERE id = ? AND landlord_id = ?");
+    $stmt->execute([$edit_id, $lid]);
     $edit_property = $stmt->fetch();
 }
 

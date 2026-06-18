@@ -49,8 +49,8 @@ function approveLandlord(string $userId): bool {
     if (!$user || empty($user['property_address'])) return false;
 
     $propId = 'p' . round(microtime(true) * 1000);
-    db()->prepare("INSERT INTO properties (id, title, address, rent_amount, status) VALUES (?, ?, ?, 0, 'available')")
-        ->execute([$propId, $user['full_name'] ?: $user['username'] . "'s Property", $user['property_address']]);
+    db()->prepare("INSERT INTO properties (id, title, address, landlord_id, rent_amount, status) VALUES (?, ?, ?, ?, 0, 'available')")
+        ->execute([$propId, $user['full_name'] ?: $user['username'] . "'s Property", $user['property_address'], $userId]);
     db()->prepare("UPDATE users SET approved = 1 WHERE id = ?")->execute([$userId]);
     return true;
 }

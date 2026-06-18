@@ -12,25 +12,33 @@ require_once __DIR__ . '/includes/helpers.php';
 requireAuth();
 requireRole('landlord');
 
-// Handle status update: approve, resolve, or reject a request
+$user = getCurrentUser();
+$lid = $user['id'];
+
+// Handle status update: approve, resolve, or reject a request (only if it belongs to this landlord)
 $update_id = $_GET['update'] ?? '';
 $new_status = $_GET['status'] ?? '';
 if ($update_id && $new_status) {
-    $stmt = db()->prepare("UPDATE service_requests SET status=? WHERE id=?");
-    $stmt->execute([$new_status, $update_id]);
+    db()->prepare("UPDATE service_requests sr JOIN contracts c ON c.id = sr.contract_id JOIN properties p ON p.id = c.property_id SET sr.status=? WHERE sr.id=? AND p.landlord_id=?")
+        ->execute([$new_status, $update_id, $lid]);
     header('Location: requests.php');
     exit;
 }
 
-// Fetch all requests, tenants, and related contracts for display
-$requests = db()->query("SELECT * FROM service_requests ORDER BY date DESC")->fetchAll();
-$tenants = db()->query("SELECT * FROM tenants")->fetchAll();
-$contracts_map = [];
-$cstmt = db()->query("SELECT c.*, p.title as property_title FROM contracts c JOIN properties p ON p.id = c.property_id");
-foreach ($cstmt as $c) $contracts_map[$c['id']] = $c;
+// Fetch requests, tenants, and contracts for this landlord only
+$rqstmt = db()->prepare("SELECT sr.* FROM service_requests sr JOIN contracts c ON c.id = sr.contract_id JOIN properties p ON p.id = c.property_id WHERE p.landlord_id = ? ORDER BY sr.date DESC");
+$rqstmt->execute([$lid]);
+$requests = $rqstmt->fetchAll();
 
+$tstmt = db()->prepare("SELECT * FROM tenants WHERE landlord_id = ?");
+$tstmt->execute([$lid]);
 $tenant_map = [];
-foreach ($tenants as $t) $tenant_map[$t['id']] = $t;
+foreach ($tstmt as $t) $tenant_map[$t['id']] = $t;
+
+$contracts_map = [];
+$cstmt = db()->prepare("SELECT c.*, p.title as property_title FROM contracts c JOIN properties p ON p.id = c.property_id WHERE p.landlord_id = ?");
+$cstmt->execute([$lid]);
+foreach ($cstmt as $c) $contracts_map[$c['id']] = $c;
 
 // Return an SVG icon corresponding to the request type (maintenance, move_out, or other)
 function getRequestIcon(string $type): string {

@@ -5,14 +5,17 @@ require_once __DIR__ . '/includes/helpers.php';
 requireAuth();
 requireRole('landlord');
 
-$total_properties = db()->query("SELECT COUNT(*) as cnt FROM properties")->fetch()['cnt'];
-$total_tenants = db()->query("SELECT COUNT(*) as cnt FROM tenants")->fetch()['cnt'];
-$active_contracts = db()->query("SELECT COUNT(*) as cnt FROM contracts WHERE status='active'")->fetch()['cnt'];
-$total_payments = db()->query("SELECT SUM(amount) as total FROM payments WHERE status='completed'")->fetch()['total'] ?? 0;
-$pending_requests = db()->query("SELECT COUNT(*) as cnt FROM service_requests WHERE status='pending'")->fetch()['cnt'];
-$recent_payments = db()->query("SELECT p.*, c.property_id FROM payments p JOIN contracts c ON p.contract_id = c.id ORDER BY p.date DESC LIMIT 5")->fetchAll();
-$recent_requests = db()->query("SELECT * FROM service_requests ORDER BY date DESC LIMIT 5")->fetchAll();
-$available_properties = db()->query("SELECT COUNT(*) as cnt FROM properties WHERE status='available'")->fetch()['cnt'];
+$user = getCurrentUser();
+$lid = $user['id'];
+
+$s1 = db()->prepare("SELECT COUNT(*) as cnt FROM properties WHERE landlord_id = ?"); $s1->execute([$lid]); $total_properties = $s1->fetch()['cnt'];
+$s2 = db()->prepare("SELECT COUNT(*) as cnt FROM properties WHERE status='available' AND landlord_id = ?"); $s2->execute([$lid]); $available_properties = $s2->fetch()['cnt'];
+$s3 = db()->prepare("SELECT COUNT(*) as cnt FROM tenants WHERE landlord_id = ?"); $s3->execute([$lid]); $total_tenants = $s3->fetch()['cnt'];
+$s4 = db()->prepare("SELECT COUNT(*) as cnt FROM contracts c JOIN properties p ON p.id = c.property_id WHERE c.status='active' AND p.landlord_id = ?"); $s4->execute([$lid]); $active_contracts = $s4->fetch()['cnt'];
+$s5 = db()->prepare("SELECT COALESCE(SUM(pay.amount),0) as total FROM payments pay JOIN contracts c ON c.id = pay.contract_id JOIN properties p ON p.id = c.property_id WHERE pay.status='completed' AND p.landlord_id = ?"); $s5->execute([$lid]); $total_payments = $s5->fetch()['total'];
+$s6 = db()->prepare("SELECT COUNT(*) as cnt FROM service_requests sr JOIN contracts c ON c.id = sr.contract_id JOIN properties p ON p.id = c.property_id WHERE sr.status='pending' AND p.landlord_id = ?"); $s6->execute([$lid]); $pending_requests = $s6->fetch()['cnt'];
+$s7 = db()->prepare("SELECT pay.*, c.property_id FROM payments pay JOIN contracts c ON pay.contract_id = c.id JOIN properties p ON p.id = c.property_id WHERE p.landlord_id = ? ORDER BY pay.date DESC LIMIT 5"); $s7->execute([$lid]); $recent_payments = $s7->fetchAll();
+$s8 = db()->prepare("SELECT sr.* FROM service_requests sr JOIN contracts c ON c.id = sr.contract_id JOIN properties p ON p.id = c.property_id WHERE p.landlord_id = ? ORDER BY sr.date DESC LIMIT 5"); $s8->execute([$lid]); $recent_requests = $s8->fetchAll();
 
 ob_start();
 ?>

@@ -14,6 +14,13 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS property_address TEXT DEFAULT NULL AF
 ALTER TABLE users ADD COLUMN IF NOT EXISTS must_change_password TINYINT(1) NOT NULL DEFAULT 1 AFTER `tenant_id`;
 
 ALTER TABLE tenants ADD COLUMN IF NOT EXISTS nida VARCHAR(50) DEFAULT NULL AFTER `phone`;
+ALTER TABLE tenants ADD COLUMN IF NOT EXISTS landlord_id VARCHAR(20) DEFAULT NULL AFTER `nida`;
+
+ALTER TABLE properties ADD COLUMN IF NOT EXISTS landlord_id VARCHAR(20) DEFAULT NULL AFTER `address`;
+
+-- Link existing seed data to the sample landlord (u3)
+UPDATE properties SET landlord_id = 'u3' WHERE landlord_id IS NULL;
+UPDATE tenants    SET landlord_id = 'u3' WHERE landlord_id IS NULL;
 
 -- Set default values for existing users so they don't break
 UPDATE users SET full_name = username, full_name = username WHERE full_name IS NULL;

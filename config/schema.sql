@@ -29,6 +29,7 @@ CREATE TABLE IF NOT EXISTS properties (
     id VARCHAR(20) PRIMARY KEY,
     title VARCHAR(255) NOT NULL,
     address TEXT NOT NULL,
+    landlord_id VARCHAR(20) DEFAULT NULL,
     rent_amount DECIMAL(12,2) NOT NULL DEFAULT 0,
     status ENUM('available','rented','maintenance') NOT NULL DEFAULT 'available',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -42,6 +43,7 @@ CREATE TABLE IF NOT EXISTS tenants (
     email VARCHAR(255) DEFAULT NULL,
     phone VARCHAR(50) NOT NULL,
     nida VARCHAR(50) DEFAULT NULL,
+    landlord_id VARCHAR(20) DEFAULT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -95,16 +97,16 @@ INSERT INTO users (id, username, password, full_name, phone, email, nida, role, 
 ON DUPLICATE KEY UPDATE username=VALUES(username);
 
 -- Seed a few properties with different rent amounts and statuses.
-INSERT INTO properties (id, title, address, rent_amount, status) VALUES
-('p1', 'Sunset Apartment A1', '123 Arusha Way', 500000, 'rented'),
-('p2', 'Sunset Apartment A2', '125 Arusha Way', 550000, 'available'),
-('p3', 'Downtown Commercial Hub', '99 Business Ave, Dar es Salaam', 1200000, 'rented')
+INSERT INTO properties (id, title, address, landlord_id, rent_amount, status) VALUES
+('p1', 'Sunset Apartment A1', '123 Arusha Way', 'u3', 500000, 'rented'),
+('p2', 'Sunset Apartment A2', '125 Arusha Way', 'u3', 550000, 'available'),
+('p3', 'Downtown Commercial Hub', '99 Business Ave, Dar es Salaam', 'u3', 1200000, 'rented')
 ON DUPLICATE KEY UPDATE title=VALUES(title);
 
 -- Seed sample tenants who will be linked to contracts.
-INSERT INTO tenants (id, name, email, phone) VALUES
-('t1', 'John Doe', 'john@example.com', '0712345678'),
-('t2', 'Jane Smith', 'jane@example.com', '0787654321')
+INSERT INTO tenants (id, name, email, phone, landlord_id) VALUES
+('t1', 'John Doe', 'john@example.com', '0712345678', 'u3'),
+('t2', 'Jane Smith', 'jane@example.com', '0787654321', 'u3')
 ON DUPLICATE KEY UPDATE name=VALUES(name);
 
 -- Seed active rental contracts linking tenants to properties.

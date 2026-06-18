@@ -11,10 +11,21 @@ require_once __DIR__ . '/includes/helpers.php';
 requireAuth();
 requireRole('landlord');
 
-// Fetch raw data for aggregation
-$properties = db()->query("SELECT * FROM properties")->fetchAll();
-$contracts = db()->query("SELECT * FROM contracts")->fetchAll();
-$payments = db()->query("SELECT * FROM payments ORDER BY date")->fetchAll();
+$user = getCurrentUser();
+$lid = $user['id'];
+
+// Fetch raw data for this landlord only
+$pstmt = db()->prepare("SELECT * FROM properties WHERE landlord_id = ?");
+$pstmt->execute([$lid]);
+$properties = $pstmt->fetchAll();
+
+$cstmt = db()->prepare("SELECT c.* FROM contracts c JOIN properties p ON p.id = c.property_id WHERE p.landlord_id = ?");
+$cstmt->execute([$lid]);
+$contracts = $cstmt->fetchAll();
+
+$paystmt = db()->prepare("SELECT pay.* FROM payments pay JOIN contracts c ON c.id = pay.contract_id JOIN properties p ON p.id = c.property_id WHERE p.landlord_id = ? ORDER BY pay.date");
+$paystmt->execute([$lid]);
+$payments = $paystmt->fetchAll();
 
 // Aggregate completed payments by month for the revenue chart
 $revenue_by_month = [];

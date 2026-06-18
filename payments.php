@@ -12,21 +12,24 @@ require_once __DIR__ . '/includes/helpers.php';
 requireAuth();
 requireRole('landlord');
 
+$user = getCurrentUser();
+$lid = $user['id'];
+
 // Determine requested action: add, delete, or mark-as-paid
 $action = $_GET['action'] ?? '';
 $delete_id = $_GET['delete'] ?? '';
 $mark_paid = $_GET['mark_paid'] ?? '';
 
-// Delete a payment record
+// Delete a payment record (only if it belongs to this landlord's property)
 if ($delete_id) {
-    db()->prepare("DELETE FROM payments WHERE id = ?")->execute([$delete_id]);
+    db()->prepare("DELETE p FROM payments p JOIN contracts c ON c.id = p.contract_id JOIN properties pr ON pr.id = c.property_id WHERE p.id = ? AND pr.landlord_id = ?")->execute([$delete_id, $lid]);
     header('Location: payments.php');
     exit;
 }
 
-// Mark a pending payment as completed (funds confirmed received)
+// Mark a pending payment as completed (only if it belongs to this landlord)
 if ($mark_paid) {
-    db()->prepare("UPDATE payments SET status='completed' WHERE id=?")->execute([$mark_paid]);
+    db()->prepare("UPDATE payments p JOIN contracts c ON c.id = p.contract_id JOIN properties pr ON pr.id = c.property_id SET p.status='completed' WHERE p.id=? AND pr.landlord_id=?")->execute([$mark_paid, $lid]);
     header('Location: payments.php');
     exit;
 }
@@ -40,16 +43,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $status = $_POST['status'] ?? 'completed';
     $control_number = $_POST['control_number'] ?? '';
 
-    $id = 'pay' . round(microtime(true) * 1000);
-    $stmt = db()->prepare("INSERT INTO payments (id, contract_id, amount, date, method, status, control_number) VALUES (?,?,?,?,?,?,?)");
-    $stmt->execute([$id, $contract_id, $amount, $date, $method, $status, $control_number ?: null]);
+    // Verify the contract belongs to this landlord
+    $check = db()->prepare("SELECT c.id FROM contracts c JOIN properties p ON p.id = c.property_id WHERE c.id = ? AND p.landlord_id = ?");
+    $check->execute([$contract_id, $lid]);
+    if ($check->fetch()) {
+        $id = 'pay' . round(microtime(true) * 1000);
+        $stmt = db()->prepare("INSERT INTO payments (id, contract_id, amount, date, method, status, control_number) VALUES (?,?,?,?,?,?,?)");
+        $stmt->execute([$id, $contract_id, $amount, $date, $method, $status, $control_number ?: null]);
+    }
     header('Location: payments.php');
     exit;
 }
 
-// Fetch payments and active contracts (for the form dropdown)
-$payments = db()->query("SELECT * FROM payments ORDER BY date DESC")->fetchAll();
-$contracts = db()->query("SELECT c.*, t.name as tenant_name, p.title as property_title FROM contracts c JOIN tenants t ON t.id = c.tenant_id JOIN properties p ON p.id = c.property_id WHERE c.status='active'")->fetchAll();
+// Fetch payments and active contracts for this landlord only
+$pstmt = db()->prepare("SELECT p.* FROM payments p JOIN contracts c ON c.id = p.contract_id JOIN properties pr ON pr.id = c.property_id WHERE pr.landlord_id = ? ORDER BY p.date DESC");
+$pstmt->execute([$lid]);
+$payments = $pstmt->fetchAll();
+
+$cstmt = db()->prepare("SELECT c.*, t.name as tenant_name, p.title as property_title FROM contracts c JOIN tenants t ON t.id = c.tenant_id JOIN properties p ON p.id = c.property_id WHERE c.status='active' AND p.landlord_id = ?");
+$cstmt->execute([$lid]);
+$contracts = $cstmt->fetchAll();
 
 $show_modal = $action === 'add';
 
