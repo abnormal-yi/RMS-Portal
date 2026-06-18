@@ -22,6 +22,9 @@ ALTER TABLE properties ADD COLUMN IF NOT EXISTS landlord_id VARCHAR(20) DEFAULT 
 UPDATE properties SET landlord_id = 'u3' WHERE landlord_id IS NULL;
 UPDATE tenants    SET landlord_id = 'u3' WHERE landlord_id IS NULL;
 
+-- Seed users should NOT be forced to change password (use their default 'password')
+UPDATE users SET must_change_password = 0 WHERE username IN ('admin', 'johndoe', 'landlord');
+
 -- Set default values for existing users so they don't break
 UPDATE users SET full_name = username, full_name = username WHERE full_name IS NULL;
 UPDATE users SET approved = 1 WHERE approved IS NULL;

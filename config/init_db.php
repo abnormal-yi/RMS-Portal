@@ -162,6 +162,8 @@ try {
         $pdo->exec("ALTER TABLE `tenants` ADD COLUMN IF NOT EXISTS `landlord_id` VARCHAR(20) DEFAULT NULL AFTER `nida`");
         $pdo->exec("ALTER TABLE `tenants` MODIFY COLUMN `email` VARCHAR(255) DEFAULT NULL");
         $pdo->exec("ALTER TABLE `properties` ADD COLUMN IF NOT EXISTS `landlord_id` VARCHAR(20) DEFAULT NULL AFTER `address`");
+        // Seed users should not be forced to change password
+        $pdo->exec("UPDATE users SET must_change_password = 0 WHERE username IN ('admin', 'johndoe', 'landlord')");
         $pdo->exec("INSERT IGNORE INTO `users` (`id`, `username`, `password`, `full_name`, `role`, `approved`) VALUES
             ('u3', 'landlord', '" . password_hash('password', PASSWORD_DEFAULT) . "', 'Property Owner', 'landlord', 1)");
         echo "<div class='bg-green-50 border border-green-200 text-green-700 p-3 rounded-lg text-sm'>✓ Schema updated / landlord user ensured.</div>";
