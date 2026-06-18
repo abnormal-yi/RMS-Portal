@@ -170,11 +170,8 @@ ob_start();
                     <label class="block text-sm font-medium text-gray-700">Property</label>
                     <select name="property_id" required class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500">
                         <option value="" disabled <?= !$form_data['property_id'] ? 'selected' : '' ?>>Select a property</option>
-                        <?php foreach ($properties as $p):
-                            $show = ($p['status'] === 'available' || $p['id'] === $form_data['property_id']);
-                            if (!$show) continue;
-                        ?>
-                        <option value="<?= $p['id'] ?>" <?= $form_data['property_id'] === $p['id'] ? 'selected' : '' ?>><?= hsc($p['title']) ?> (<?= formatCurrency($p['rent_amount']) ?>/mo)</option>
+                        <?php foreach ($properties as $p): ?>
+                        <option value="<?= $p['id'] ?>" <?= $form_data['property_id'] === $p['id'] ? 'selected' : '' ?>><?= hsc($p['title']) ?> (<?= formatCurrency($p['rent_amount']) ?>/mo) — <?= $p['status'] ?></option>
                         <?php endforeach; ?>
                     </select>
                 </div>
